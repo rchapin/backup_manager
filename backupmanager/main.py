@@ -1,6 +1,7 @@
 import sys
 import logging
 import argparse
+from backupmanager.lib.backupmanager import BackupManager
 
 # For the time-being, we are just logging to the console
 logging.basicConfig(
@@ -13,39 +14,31 @@ logger = logging.getLogger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parent_parser = argparse.ArgumentParser()
-    child_parsers = parent_parser.add_subparsers()
-
-    # Default set of args for all child parsers ###############################
-    shared = argparse.ArgumentParser(add_help=False)
-    shared.add_argument(
-        '--esxihost',
+    parser.add_argument(
+        '--configfile',
         type=str,
         required=True,
-        help='esxi host to shutdown')
+        help='Fully qualified path to the config file')
 
-    shared.add_argument(
+    parser.add_argument(
         '--loglevel',
         type=str,
         default='INFO',
         help='logging output level configuration')
 
-    shared.add_argument(
+    parser.add_argument(
         '--dryrun',
         action='store_true',
         help='Run in dryrun mode')
 
-#     # Shutdown ################################################################
-#     parser = child_parsers.add_parser(
-#         'shutdown',
-#         parents=[shared],
-#         help='Shuts down the esxi by first powering off vms and then the host itself')
-#     parser.set_defaults(funct=shutdown)
-
-    return parent_parser.parse_args()
+    return parser.parse_args()
 
 def main():
     args = parse_args()
+    logging.getLogger().setLevel(args.loglevel.upper())
+    backupManger = BackupManager(args, logger)
+    backupManger.run()
+
 
 ###############################################################################
 # MAIN

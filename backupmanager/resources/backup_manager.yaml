@@ -1,0 +1,10 @@
+-
+  id: 'rsync-to-yermos'
+  blocks_on:
+    host: somehost
+    pid_path: /var/run/some.pid
+  source: /path/to/dir
+  dest: root@someotherhost:/path/to
+  opts:
+    - '-av'
+    - '--delete'

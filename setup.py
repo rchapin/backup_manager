@@ -10,7 +10,7 @@ except:
 
 CLASSIFIERS = [
     'Development Status :: 5 - Production/Stable',
-    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
 ]
 
 setup(
@@ -22,7 +22,7 @@ setup(
     author_email='rchapin@nbinteractive.com',
     long_description=README,
     url='',
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     packages=find_packages(),
     include_package_data=True,
     install_requires=open('requirements.txt').read().splitlines(),
