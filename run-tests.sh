@@ -47,6 +47,7 @@ function export_env_vars {
   export BACKUPMGRINTTEST_PARENT_DIR=${BACKUPMGRINTTEST_PARENT_DIR:-/var/tmp/backup_manager-integration-test}
   export BACKUPMGRINTTEST_CONFIG_DIR=${BACKUPMGRINTTEST_CONFIG_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/config}
   export BACKUPMGRINTTEST_CONFIG_FILE=${BACKUPMGRINTTEST_CONFIG_FILE:-backup_manager.yaml}
+  export BACKUPMGRINTTEST_SSH_DIR=${BACKUPMGRINTTEST_SSH_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/ssh}
   export BACKUPMGRINTTEST_VIRTENV_DIR=${BACKUPMGRINTTEST_VIRTENV_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/virtenv}
   export BACKUPMGRINTTEST_CONTAINER_NAME=${BACKUPMGRINTTEST_CONTAINER_NAME:-backup_manager_inttest}
   export BACKUPMGRINTTEST_IMAGE_NAME=${BACKUPMGRINTTEST_IMAGE_NAME:-backup_manager_inttest}
@@ -62,6 +63,30 @@ function export_env_vars {
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
+#          NAME:  which_linux_distro
+#   DESCRIPTION:  Returns the enum/name of the linux distro on which we are
+#                 running the tests
+#-------------------------------------------------------------------------------
+function which_linux_distro {
+  local retval=""
+
+  if [ -f "/etc/debian_version" ]; then
+    retval="debian"
+  fi
+  # TODO add RHEL
+
+  echo retval
+}
+
+#---  FUNCTION  ----------------------------------------------------------------
+#          NAME:  install_dependencies
+#   DESCRIPTION:  Installs required packages to setup and run the tests.
+#-------------------------------------------------------------------------------
+function install_dependencies {
+
+}
+
+#---  FUNCTION  ----------------------------------------------------------------
 #          NAME:  setup
 #   DESCRIPTION:  Cleans and creates the required test dirs based on the env
 #                 vars already defined.
@@ -69,6 +94,20 @@ function export_env_vars {
 function setup {
   # First run teardown to remove anything left behind
   teardown
+
+  #
+  # Ensure that the user running this command has already distributed their
+  # ssh key to the root@localhost account so that they can ssh without a
+  # password.
+  # 
+  cat << EOF
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+If the following attempt to ssh to root@localhost hangs, asking for a password,
+you have not yet setup passwordless ssh yet.  CTRL-C this script ssh-copy-id
+your keys to the root@localhost account and try again.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+EOF
+  ssh root@localhost hostname
 
   #
   # Now create the directory structure needed for the test and copy the bare
@@ -79,6 +118,7 @@ function setup {
   dirs=(
     "$BACKUPMGRINTTEST_PARENT_DIR"
     "$BACKUPMGRINTTEST_CONFIG_DIR"
+    "$BACKUPMGRINTTEST_SSH_DIR"
   ) 
   for dir in "${dirs[@]}"
   do
@@ -91,6 +131,23 @@ function setup {
   source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
   pip install -U setuptools pip
   pip install .
+
+  start_dir=$(pwd)
+  # Build the docker image
+  cd backupmanager/lib/integration_tests/docker/
+  docker build --build-arg root_passwd=$BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD -t $BACKUPMGRINTTEST_IMAGE_NAME .
+
+  # Fire up the docker container
+  docker run --rm -d --name $BACKUPMGRINTTEST_CONTAINER_NAME -p ${BACKUPMGRINTTEST_CONTAINER_PORT}:22 $BACKUPMGRINTTEST_IMAGE_NAME
+  cd $start_dir
+
+  # Set the correct permissions for the ssh dir
+  chmod 700 $BACKUPMGRINTTEST_SSH_DIR
+
+  # Generate an ssh key and add it to the docker container
+  ssh-keygen -q -t rsa -N '' -f $BACKUPMGRINTTEST_SSH_DIR/id_rsa <<<y 2>&1 >/dev/null
+
+  
 
   # Copy the log4.properties and logging.properties files into the config dir so
   # that we can provide the paths to them in the command to start the JVM.
@@ -116,8 +173,8 @@ function teardown {
   # It is possible that there is no container or images in existence, but we
   # we will stop any running container and delete the image
   set +e
-  docker stop $BACKUPMGRINTTEST_CONTAINER_NAME
-  docker rmi $BACKUPMGRINTTEST_IMAGE_NAME  
+  docker stop $BACKUPMGRINTTEST_CONTAINER_NAME 2> /dev/null
+  docker rmi $BACKUPMGRINTTEST_IMAGE_NAME 2> /dev/null
   set -e
 
   echo "Test dirs and docker clean-up complete" 
@@ -135,53 +192,48 @@ function run_tests {
   #
   # Run the unit tests
   # 
-  CMD="mvn"
-
-  if [ "$CLEAN" == 1 ]
-  then
-    CMD="$CMD clean"
-  fi
-
-  if [ "$UNIT_TEST_TO_RUN" != 0 ]
-  then
-    CMD="$CMD -Dtest=$UNIT_TEST_TO_RUN"
-  fi
-
-  CMD="$CMD test -P dev"
-  echo "CMD = $CMD"
-  eval $CMD
-  if [ "$?" != 0 ]
-  then
-    echo "Unit tests failed" >&2
-    exit 1
-  fi
-
-  #
-  # Run the integration tests
-  #
-  CMD=""
-
-  if [ "$DEBUG" == 1 ]
-  then
-    CMD="mvnDebug -DforkCount=0"
-  else
-    CMD="mvn"
-  fi
-
-  if [ "$INTEGRATION_TEST_TO_RUN" != 0 ]
-  then
-    CMD="$CMD -Dit.test=$INTEGRATION_TEST_TO_RUN"
-  fi
-
-  CMD=$(cat << EOF
-$CMD verify -P integration-test
--Dlog4j.configurationFile="file:$BACKUPMGRINTTEST_LOG4JPATH"
--Djava.util.logging.config.file=$BACKUPMGRINTTEST_LOGGING_PROPERTIES_PATH
--Dlog.file.path=$BACKUPMGRINTTEST_LOG_DIR
-EOF
-)
-
-  eval $CMD
+#   CMD="mvn"
+# 
+#   if [ "$UNIT_TEST_TO_RUN" != 0 ]
+#   then
+#     CMD="$CMD -Dtest=$UNIT_TEST_TO_RUN"
+#   fi
+# 
+#   CMD="$CMD test -P dev"
+#   echo "CMD = $CMD"
+#   eval $CMD
+#   if [ "$?" != 0 ]
+#   then
+#     echo "Unit tests failed" >&2
+#     exit 1
+#   fi
+# 
+#   #
+#   # Run the integration tests
+#   #
+#   CMD=""
+# 
+#   if [ "$DEBUG" == 1 ]
+#   then
+#     CMD="mvnDebug -DforkCount=0"
+#   else
+#     CMD="mvn"
+#   fi
+# 
+#   if [ "$INTEGRATION_TEST_TO_RUN" != 0 ]
+#   then
+#     CMD="$CMD -Dit.test=$INTEGRATION_TEST_TO_RUN"
+#   fi
+# 
+#   CMD=$(cat << EOF
+# $CMD verify -P integration-test
+# -Dlog4j.configurationFile="file:$BACKUPMGRINTTEST_LOG4JPATH"
+# -Djava.util.logging.config.file=$BACKUPMGRINTTEST_LOGGING_PROPERTIES_PATH
+# -Dlog.file.path=$BACKUPMGRINTTEST_LOG_DIR
+# EOF
+# )
+# 
+#   eval $CMD
   set +e
 }
 
@@ -196,14 +248,6 @@ Options:
 
   -e OVERRIDE_ENV_VARS_PATH
        path to the file that contains the any overriding env vars.
-
-  -c CLEAN
-       clean existing compiled class files before testing.  Adds the "clean"
-       option to the maven command before running the unit tests.
-
-  -d DEBUG
-       run maven in debug mode to be able to connect to it with a remote
-       debugger.
 
   -i INTEGRATION_TEST_TO_RUN
        Specific integration test to run, must be specify class and test in quoted
@@ -257,8 +301,6 @@ EOF
 # well as define the default values.
 #
 HELP=0
-CLEAN=0
-DEBUG=0
 LEAVE=0
 TEARDOWN=0
 SETUP_ONLY=0
@@ -267,7 +309,7 @@ OVERRIDE_ENV_VARS_PATH=0
 INTEGRATION_TEST_TO_RUN=0
 UNIT_TEST_TO_RUN=0
 
-PARSED_OPTIONS=`getopt -o hcdlte:i:u: -l export-env-vars-only,setup-only -- "$@"`
+PARSED_OPTIONS=`getopt -o hlte:i:u: -l export-env-vars-only,setup-only -- "$@"`
 
 # Check to see if the getopts command failed
 if [ $? -ne 0 ];
@@ -283,16 +325,6 @@ while true; do
    case "$1" in
       -h)
          HELP=1
-         shift
-         ;;
-
-      -c)
-         CLEAN=1
-         shift
-         ;;
-
-      -d)
-         DEBUG=1
          shift
          ;;
 
