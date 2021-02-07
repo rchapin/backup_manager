@@ -3,8 +3,10 @@ RUN apk add --no-cache \
     openssh \
     rsync \
     # Ensure that we can passwordlessly ssh to this host
-    && sed -i '/PermitRootLogin/d' /etc/ssh/sshd_config
-    && echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+    && sed -i '/PermitRootLogin/d' /etc/ssh/sshd_config \
+    && echo "PermitRootLogin yes" >> /etc/ssh/sshd_config \
+    # Generate keys for the ssh server
+    && ssh-keygen -A
 
 EXPOSE 22
 CMD ["/usr/sbin/sshd","-D"]
