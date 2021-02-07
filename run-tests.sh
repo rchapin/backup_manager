@@ -83,6 +83,8 @@ function which_linux_distro {
 #   DESCRIPTION:  Installs required packages to setup and run the tests.
 #-------------------------------------------------------------------------------
 function install_dependencies {
+  distro=$(which_linux_distro)
+  
 
 }
 
