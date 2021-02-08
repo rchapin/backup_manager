@@ -162,7 +162,7 @@ function setup {
   # Create the virtual environment and install the application
   $(which python3.7) -mvenv $BACKUPMGRINTTEST_VIRTENV_DIR
   source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
-  pip install -U setuptools pip
+  pip install -U setuptools pip coverage
   pip install .
 
   start_dir=$(pwd)
@@ -235,6 +235,24 @@ function teardown {
 
 function run_tests {
   set -e
+
+# APPEND=""
+# 
+# if [[ $RUN_UNIT_TESTS == 1 ]]; then
+#   # Run the unit tests first
+#   APPEND="--append"
+#   trace "Running unit tests"
+#   (cd $SCRIPT_DIR && coverage run -m unittest discover -s ${APP_NAME}/tests $TEST_NAMES)
+# fi
+# 
+# if [[ $RUN_INTEGRATION_TESTS == 1 ]]; then
+#   # Install application and run the integration test
+#   (cd $SCRIPT_DIR && coverage run ${APPEND} -m unittest discover --failfast --pattern integration_test.py $TEST_NAMES)
+# fi
+# 
+# coverage report ${APP_NAME}/*.py
+
+
   #
   # Run the unit tests
   # 
