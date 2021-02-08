@@ -48,6 +48,8 @@ function export_env_vars {
   export BACKUPMGRINTTEST_CONFIG_DIR=${BACKUPMGRINTTEST_CONFIG_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/config}
   export BACKUPMGRINTTEST_CONFIG_FILE=${BACKUPMGRINTTEST_CONFIG_FILE:-backup_manager.yaml}
   export BACKUPMGRINTTEST_SSH_DIR=${BACKUPMGRINTTEST_SSH_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/ssh}
+  export BACKUPMGRINTTEST_SSH_IDENTITY_FILE=${BACKUPMGRINTTEST_SSH_IDENTITY_FILE:-$BACKUPMGRINTTEST_SSH_DIR/id_rsa}
+  export BACKUPMGRINTTEST_SSH_IDENTITY_FILE_PUB=${BACKUPMGRINTTEST_SSH_IDENTITY_FILE_PUB:-${BACKUPMGRINTTEST_SSH_IDENTITY_FILE}.pub}
   export BACKUPMGRINTTEST_VIRTENV_DIR=${BACKUPMGRINTTEST_VIRTENV_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/virtenv}
   export BACKUPMGRINTTEST_CONTAINER_NAME=${BACKUPMGRINTTEST_CONTAINER_NAME:-backup_manager_inttest}
   export BACKUPMGRINTTEST_IMAGE_NAME=${BACKUPMGRINTTEST_IMAGE_NAME:-backup_manager_inttest}
@@ -56,6 +58,7 @@ function export_env_vars {
   # It doesn't really matter what this password is. We just need something
   # with which we can ssh/rsync to the container to execute the tests
   export BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD=${BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD:-password123}
+  export BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD_FILE=${BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD_FILE:-$BACKUPMGRINTTEST_CONFIG_DIR/test-container-root-passwd.txt}
 
   export BACKUPMGRINTTEST_WHICH_PATH=${BACKUPMGRINTTEST_WHICH_PATH:-/usr/bin/which}
 
@@ -75,7 +78,7 @@ function which_linux_distro {
   fi
   # TODO add RHEL
 
-  echo retval
+  echo $retval
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
@@ -84,8 +87,54 @@ function which_linux_distro {
 #-------------------------------------------------------------------------------
 function install_dependencies {
   distro=$(which_linux_distro)
-  
+  case $distro in
 
+    debian)
+      ssh root@localhost apt-get install -y sshpass
+      ;;
+
+    redhat)
+      # TODO
+      echo "redhat"
+      ;;
+
+    *)
+      echo -n "unknown"
+      ;;
+
+  esac
+}
+
+#---  FUNCTION  ----------------------------------------------------------------
+#          NAME:  configure_firewall
+#   DESCRIPTION:  Configures the firewall on the test machine if it is already
+#                 installed and enabled.  If not, it is a noop.
+#-------------------------------------------------------------------------------
+function configure_firewall {
+  distro=$(which_linux_distro)
+  case $distro in
+
+    debian)
+      if dpkg --get-selections | grep ufw 2>&1 > /dev/null     
+      then
+        # Check to see if it is active
+        if ! ssh root@localhost ufw status | grep inactive > /dev/null
+        then
+          echo "Adding ${BACKUPMGRINTTEST_CONTAINER_PORT} to ufw firewall"
+          ssh root@localhost ufw allow ${BACKUPMGRINTTEST_CONTAINER_PORT}/tcp
+        fi
+      fi
+      ;;
+
+    redhat)
+      echo "redhat"
+      ;;
+
+    *)
+      echo -n "unknown"
+      ;;
+
+  esac
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
@@ -96,27 +145,10 @@ function install_dependencies {
 function setup {
   # First run teardown to remove anything left behind
   teardown
+  install_dependencies 
+  configure_firewall
 
-  #
-  # Ensure that the user running this command has already distributed their
-  # ssh key to the root@localhost account so that they can ssh without a
-  # password.
-  # 
-  cat << EOF
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-If the following attempt to ssh to root@localhost hangs, asking for a password,
-you have not yet setup passwordless ssh yet.  CTRL-C this script ssh-copy-id
-your keys to the root@localhost account and try again.
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-EOF
-  ssh root@localhost hostname
-
-  #
-  # Now create the directory structure needed for the test and copy the bare
-  # minimum of files needed to them before we can fire up the JVM.
-  # We only create the Normalizer Home dir because Normalizer should be able
-  # to create all of its own working dirs.
-  #
+  # Now create the directory structure needed for the tests.
   dirs=(
     "$BACKUPMGRINTTEST_PARENT_DIR"
     "$BACKUPMGRINTTEST_CONFIG_DIR"
@@ -127,7 +159,6 @@ EOF
     mkdir -p $dir
   done
 
-  #
   # Create the virtual environment and install the application
   $(which python3.7) -mvenv $BACKUPMGRINTTEST_VIRTENV_DIR
   source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
@@ -146,10 +177,23 @@ EOF
   # Set the correct permissions for the ssh dir
   chmod 700 $BACKUPMGRINTTEST_SSH_DIR
 
-  # Generate an ssh key and add it to the docker container
-  ssh-keygen -q -t rsa -N '' -f $BACKUPMGRINTTEST_SSH_DIR/id_rsa <<<y 2>&1 >/dev/null
+  # Generate an ssh key to be added to the coand add it to the docker container
+  ssh-keygen -q -t rsa -N '' -f $BACKUPMGRINTTEST_SSH_IDENTITY_FILE <<<y 2>&1 >/dev/null
+  chmod 600 $BACKUPMGRINTTEST_SSH_DIR/*
 
-  
+  # Because we are likely going to run this multiple times and idempotency is
+  # king, we want to ensure that we do not already have a set of keys for
+  # this docker container.
+  ssh-keygen -f "/home/rchapin/.ssh/known_hosts" -R "[localhost]:$BACKUPMGRINTTEST_CONTAINER_PORT"
+
+  # Generate a file that contains the root password for the docker container so
+  # that we can use sshpass to non-interactively ssh to the docker container to
+  # install our ssh key.
+  echo "$BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD" > $BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD_FILE
+  sshpass -f $BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD_FILE ssh-copy-id -i $BACKUPMGRINTTEST_SSH_IDENTITY_FILE_PUB -p $BACKUPMGRINTTEST_CONTAINER_PORT -o StrictHostKeyChecking=no root@localhost
+
+  # ssh to the docker container automatically accepting the host keys
+  ssh -p $BACKUPMGRINTTEST_CONTAINER_PORT -i $BACKUPMGRINTTEST_SSH_IDENTITY_FILE -o StrictHostKeyChecking=no root@localhost hostname
 
   # Copy the log4.properties and logging.properties files into the config dir so
   # that we can provide the paths to them in the command to start the JVM.
