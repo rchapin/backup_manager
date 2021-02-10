@@ -47,8 +47,8 @@ function export_env_vars {
   export BACKUPMGRINTTEST_PARENT_DIR=${BACKUPMGRINTTEST_PARENT_DIR:-/var/tmp/backup_manager-integration-test}
   export BACKUPMGRINTTEST_CONFIG_DIR=${BACKUPMGRINTTEST_CONFIG_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/config}
   export BACKUPMGRINTTEST_CONFIG_FILE=${BACKUPMGRINTTEST_CONFIG_FILE:-backup_manager.yaml}
-  export BACKUPMGRINTTEST_SSH_DIR=${BACKUPMGRINTTEST_SSH_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/ssh}
-  export BACKUPMGRINTTEST_SSH_IDENTITY_FILE=${BACKUPMGRINTTEST_SSH_IDENTITY_FILE:-$BACKUPMGRINTTEST_SSH_DIR/id_rsa}
+  export BACKUPMGRINTTEST_DOCKER_DIR=${BACKUPMGRINTTEST_DOCKER_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/docker}
+  export BACKUPMGRINTTEST_SSH_IDENTITY_FILE=${BACKUPMGRINTTEST_SSH_IDENTITY_FILE:-$BACKUPMGRINTTEST_DOCKER_DIR/id_rsa}
   export BACKUPMGRINTTEST_SSH_IDENTITY_FILE_PUB=${BACKUPMGRINTTEST_SSH_IDENTITY_FILE_PUB:-${BACKUPMGRINTTEST_SSH_IDENTITY_FILE}.pub}
   export BACKUPMGRINTTEST_VIRTENV_DIR=${BACKUPMGRINTTEST_VIRTENV_DIR:-$BACKUPMGRINTTEST_PARENT_DIR/virtenv}
   export BACKUPMGRINTTEST_CONTAINER_NAME=${BACKUPMGRINTTEST_CONTAINER_NAME:-backup_manager_inttest}
@@ -106,6 +106,42 @@ function install_dependencies {
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
+#          NAME:  build_docker_test_image
+#   DESCRIPTION:  Builds the docker image which we will use to run the tests.
+#-------------------------------------------------------------------------------
+function build_docker_test_image {
+  local start_dir=$(pwd)
+
+  # Generate an ssh key to be added to the docker image when we build it.
+  ssh-keygen -q -t rsa -N '' -f $BACKUPMGRINTTEST_SSH_IDENTITY_FILE <<<y 2>&1 >/dev/null
+
+  # Copy the docker file to the "build" dir and build the docker image
+  cp backupmanager/lib/integration_tests/docker/Dockerfile $BACKUPMGRINTTEST_DOCKER_DIR
+  cd $BACKUPMGRINTTEST_DOCKER_DIR
+  docker build --build-arg root_passwd=$BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD -t $BACKUPMGRINTTEST_IMAGE_NAME .
+
+  cd $start_dir
+}
+
+#---  FUNCTION  ----------------------------------------------------------------
+#          NAME:  start_docker_container
+#   DESCRIPTION:  Start the docker container which we will use to run the tests.
+#-------------------------------------------------------------------------------
+function start_docker_container {
+
+  # Fire up the docker container
+  docker run --rm -d --name $BACKUPMGRINTTEST_CONTAINER_NAME -p ${BACKUPMGRINTTEST_CONTAINER_PORT}:22 $BACKUPMGRINTTEST_IMAGE_NAME
+
+  # Because we are likely going to run this multiple times and idempotency is
+  # king, we want to ensure that we do not already have a set of keys for
+  # this docker container.
+  ssh-keygen -f "/home/rchapin/.ssh/known_hosts" -R "[localhost]:$BACKUPMGRINTTEST_CONTAINER_PORT"
+
+  # ssh to the docker container automatically accepting the host keys
+  ssh -p $BACKUPMGRINTTEST_CONTAINER_PORT -i $BACKUPMGRINTTEST_SSH_IDENTITY_FILE -o StrictHostKeyChecking=no root@localhost hostname
+}
+
+#---  FUNCTION  ----------------------------------------------------------------
 #          NAME:  configure_firewall
 #   DESCRIPTION:  Configures the firewall on the test machine if it is already
 #                 installed and enabled.  If not, it is a noop.
@@ -138,6 +174,17 @@ function configure_firewall {
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
+#          NAME:  create_virtenv
+#   DESCRIPTION:  Create the virtual environment and install the application.
+#-------------------------------------------------------------------------------
+function create_virtenv {
+  $(which python3.7) -mvenv $BACKUPMGRINTTEST_VIRTENV_DIR
+  source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
+  pip install -U setuptools pip coverage
+  pip install .
+}
+
+#---  FUNCTION  ----------------------------------------------------------------
 #          NAME:  setup
 #   DESCRIPTION:  Cleans and creates the required test dirs based on the env
 #                 vars already defined.
@@ -145,67 +192,23 @@ function configure_firewall {
 function setup {
   # First run teardown to remove anything left behind
   teardown
-  install_dependencies 
-  configure_firewall
 
   # Now create the directory structure needed for the tests.
   dirs=(
     "$BACKUPMGRINTTEST_PARENT_DIR"
     "$BACKUPMGRINTTEST_CONFIG_DIR"
-    "$BACKUPMGRINTTEST_SSH_DIR"
+    "$BACKUPMGRINTTEST_DOCKER_DIR"
   ) 
   for dir in "${dirs[@]}"
   do
     mkdir -p $dir
   done
 
-  # Create the virtual environment and install the application
-  $(which python3.7) -mvenv $BACKUPMGRINTTEST_VIRTENV_DIR
-  source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
-  pip install -U setuptools pip coverage
-  pip install .
-
-  start_dir=$(pwd)
-  # Build the docker image
-  cd backupmanager/lib/integration_tests/docker/
-  docker build --build-arg root_passwd=$BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD -t $BACKUPMGRINTTEST_IMAGE_NAME .
-
-  # Fire up the docker container
-  docker run --rm -d --name $BACKUPMGRINTTEST_CONTAINER_NAME -p ${BACKUPMGRINTTEST_CONTAINER_PORT}:22 $BACKUPMGRINTTEST_IMAGE_NAME
-  cd $start_dir
-
-  # Set the correct permissions for the ssh dir
-  chmod 700 $BACKUPMGRINTTEST_SSH_DIR
-
-  # Generate an ssh key to be added to the coand add it to the docker container
-  ssh-keygen -q -t rsa -N '' -f $BACKUPMGRINTTEST_SSH_IDENTITY_FILE <<<y 2>&1 >/dev/null
-  chmod 600 $BACKUPMGRINTTEST_SSH_DIR/*
-
-  # Because we are likely going to run this multiple times and idempotency is
-  # king, we want to ensure that we do not already have a set of keys for
-  # this docker container.
-  ssh-keygen -f "/home/rchapin/.ssh/known_hosts" -R "[localhost]:$BACKUPMGRINTTEST_CONTAINER_PORT"
-
-  # Generate a file that contains the root password for the docker container so
-  # that we can use sshpass to non-interactively ssh to the docker container to
-  # install our ssh key.
-  echo "$BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD" > $BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD_FILE
-  sshpass -f $BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD_FILE ssh-copy-id -i $BACKUPMGRINTTEST_SSH_IDENTITY_FILE_PUB -p $BACKUPMGRINTTEST_CONTAINER_PORT -o StrictHostKeyChecking=no root@localhost
-
-  # ssh to the docker container automatically accepting the host keys
-  ssh -p $BACKUPMGRINTTEST_CONTAINER_PORT -i $BACKUPMGRINTTEST_SSH_IDENTITY_FILE -o StrictHostKeyChecking=no root@localhost hostname
-
-  # Copy the log4.properties and logging.properties files into the config dir so
-  # that we can provide the paths to them in the command to start the JVM.
-  #
-  # Figure out the path to the resources dir
-  # resources_dir=$(dirname $0)
-  # resources_dir=$(cd $resources_dir && pwd)
-  # cp $resources_dir/$BACKUPMGRINTTEST_LOG4JFILE $BACKUPMGRINTTEST_LOG4JPATH
-
-  # Substitute specific vars in the logging.properties file and write it to the
-  # specified test location
-  # envsubst '${BACKUPMGRINTTEST_LOG_DIR}' <${resources_dir}/$BACKUPMGRINTTEST_LOGGING_PROPERTIES_FILE > $BACKUPMGRINTTEST_LOGGING_PROPERTIES_PATH
+  install_dependencies 
+  configure_firewall
+  build_docker_test_image
+  start_docker_container
+  create_virtenv
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
@@ -217,7 +220,8 @@ function teardown {
   rm -rf $BACKUPMGRINTTEST_PARENT_DIR
 
   # It is possible that there is no container or images in existence, but we
-  # we will stop any running container and delete the image
+  # will stop any running container and delete the image to ensure a clean
+  # slate.
   set +e
   docker stop $BACKUPMGRINTTEST_CONTAINER_NAME 2> /dev/null
   docker rmi $BACKUPMGRINTTEST_IMAGE_NAME 2> /dev/null
@@ -236,7 +240,12 @@ function teardown {
 function run_tests {
   set -e
 
-# APPEND=""
+  local append=""
+  
+  # Run the unit tests
+  echo "Running the unit tests"
+  coverage run -m unittest discover -s path/to/test
+  
 # 
 # if [[ $RUN_UNIT_TESTS == 1 ]]; then
 #   # Run the unit tests first
@@ -252,52 +261,6 @@ function run_tests {
 # 
 # coverage report ${APP_NAME}/*.py
 
-
-  #
-  # Run the unit tests
-  # 
-#   CMD="mvn"
-# 
-#   if [ "$UNIT_TEST_TO_RUN" != 0 ]
-#   then
-#     CMD="$CMD -Dtest=$UNIT_TEST_TO_RUN"
-#   fi
-# 
-#   CMD="$CMD test -P dev"
-#   echo "CMD = $CMD"
-#   eval $CMD
-#   if [ "$?" != 0 ]
-#   then
-#     echo "Unit tests failed" >&2
-#     exit 1
-#   fi
-# 
-#   #
-#   # Run the integration tests
-#   #
-#   CMD=""
-# 
-#   if [ "$DEBUG" == 1 ]
-#   then
-#     CMD="mvnDebug -DforkCount=0"
-#   else
-#     CMD="mvn"
-#   fi
-# 
-#   if [ "$INTEGRATION_TEST_TO_RUN" != 0 ]
-#   then
-#     CMD="$CMD -Dit.test=$INTEGRATION_TEST_TO_RUN"
-#   fi
-# 
-#   CMD=$(cat << EOF
-# $CMD verify -P integration-test
-# -Dlog4j.configurationFile="file:$BACKUPMGRINTTEST_LOG4JPATH"
-# -Djava.util.logging.config.file=$BACKUPMGRINTTEST_LOGGING_PROPERTIES_PATH
-# -Dlog.file.path=$BACKUPMGRINTTEST_LOG_DIR
-# EOF
-# )
-# 
-#   eval $CMD
   set +e
 }
 
@@ -311,34 +274,18 @@ Usage: run-tests.sh [OPTIONS]
 Options:
 
   -e OVERRIDE_ENV_VARS_PATH
-       path to the file that contains the any overriding env vars.
+     Path to the file that contains the any overriding env vars.
 
-  -i INTEGRATION_TEST_TO_RUN
-       Specific integration test to run, must be specify class and test in quoted
-       argument as follows:
-         "MyIntegrationTestClass#testName"
-
-       You can also run all of the test methods in a given class by passing in
-       a pattern that matches everything, or a subset of the tests.  The
-       following will run ALL of the anotated test methods in the class:
-         "MyIntegrationTestClass#*"
-
-       The following will only run the test cases with the string "Fails" in
-       the name of the method:
-         "MyIntegrationTestClass#*Fails*"
-
-  -u UNIT_TEST_TO_RUN
-       Specific unit test to run, must be specify class and test in quoted
-       argument as follows:
-         "MyUnitTestClass#testName"
+  -i OMMIT_INTEGRATION_TESTS
+     Ommit running the integration tests and just run the unit tests.
 
   -l LEAVE
-       do not clean any existing environment previously setup.  By default the
-       environment is cleaned and re-installed with each invocation of this
-       script.
+     Do not clean any existing environment previously setup.  By default the
+     environment is cleaned and re-installed with each invocation of this
+     script.
 
   -t TEARDOWN
-       Teardown the test environment on the configured test host
+     Teardown the test environment on the configured test host
 
   --setup-only Only run the setup without running the tests.
 
@@ -355,7 +302,7 @@ Options:
     Alternatively, you can omit the -e arg to use the defaults.
 
   -h HELP
-      Outputs this basic usage information.
+     Outputs this basic usage information.
 EOF
 }
 
@@ -370,10 +317,9 @@ TEARDOWN=0
 SETUP_ONLY=0
 EXPORT_ENV_VARS_ONLY=0
 OVERRIDE_ENV_VARS_PATH=0
-INTEGRATION_TEST_TO_RUN=0
-UNIT_TEST_TO_RUN=0
+OMMIT_INTEGRATION_TESTS=0
 
-PARSED_OPTIONS=`getopt -o hlte:i:u: -l export-env-vars-only,setup-only -- "$@"`
+PARSED_OPTIONS=`getopt -o hltie: -l export-env-vars-only,setup-only -- "$@"`
 
 # Check to see if the getopts command failed
 if [ $? -ne 0 ];
@@ -393,13 +339,8 @@ while true; do
          ;;
 
       -i)
-         INTEGRATION_TEST_TO_RUN=$2
-         shift 2
-         ;;
-
-      -u)
-         UNIT_TEST_TO_RUN=$2
-         shift 2
+         OMMIT_INTEGRATION_TESTS=1
+         shift
          ;;
 
       -l)

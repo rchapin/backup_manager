@@ -11,7 +11,14 @@ RUN apk add --no-cache \
     # Generate keys for the ssh server
     && ssh-keygen -A \
     # Create a known password for the root user
-    && echo "root:$root_passwd" | chpasswd
+    && echo "root:$root_passwd" | chpasswd \
+    # Create an .ssh dir for the root user and set the permissions
+    && mkdir /root/.ssh \
+    && chown root: /root/.ssh \
+    && chmod 700 /root/.ssh
+
+COPY id_rsa.pub /root/.ssh/authorized_keys
+RUN chmod 600 /root/.ssh/authorized_keys
 
 EXPOSE 22
 CMD ["/usr/sbin/sshd","-D"]
