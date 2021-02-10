@@ -1,7 +1,7 @@
 import sys
 import logging
 import argparse
-from backupmanager.lib.backupmanager import BackupManager
+from backupmanager.backupmanager import BackupManager
 
 # For the time-being, we are just logging to the console
 logging.basicConfig(

@@ -116,7 +116,7 @@ function build_docker_test_image {
   ssh-keygen -q -t rsa -N '' -f $BACKUPMGRINTTEST_SSH_IDENTITY_FILE <<<y 2>&1 >/dev/null
 
   # Copy the docker file to the "build" dir and build the docker image
-  cp backupmanager/lib/integration_tests/docker/Dockerfile $BACKUPMGRINTTEST_DOCKER_DIR
+  cp backupmanager/integration_tests/docker/Dockerfile $BACKUPMGRINTTEST_DOCKER_DIR
   cd $BACKUPMGRINTTEST_DOCKER_DIR
   docker build --build-arg root_passwd=$BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD -t $BACKUPMGRINTTEST_IMAGE_NAME .
 
@@ -193,6 +193,7 @@ function setup {
   # First run teardown to remove anything left behind
   teardown
 
+  echo "Setting up test environment"
   # Now create the directory structure needed for the tests.
   dirs=(
     "$BACKUPMGRINTTEST_PARENT_DIR"
@@ -209,6 +210,7 @@ function setup {
   build_docker_test_image
   start_docker_container
   create_virtenv
+  echo "Test environment setup complete"
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
@@ -217,17 +219,20 @@ function setup {
 #                 defined.
 #-------------------------------------------------------------------------------
 function teardown {
+  echo "Tearing down test environment"
+  echo "Deleting test dirs"
   rm -rf $BACKUPMGRINTTEST_PARENT_DIR
 
   # It is possible that there is no container or images in existence, but we
   # will stop any running container and delete the image to ensure a clean
   # slate.
+  echo "Stopping docker container and deleting test image"
   set +e
   docker stop $BACKUPMGRINTTEST_CONTAINER_NAME 2> /dev/null
   docker rmi $BACKUPMGRINTTEST_IMAGE_NAME 2> /dev/null
   set -e
 
-  echo "Test dirs and docker clean-up complete" 
+  echo "Test environment clean-up complete" 
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
@@ -240,11 +245,18 @@ function teardown {
 function run_tests {
   set -e
 
-  local append=""
-  
+  source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
+
   # Run the unit tests
   echo "Running the unit tests"
-  coverage run -m unittest discover -s path/to/test
+  coverage run -m unittest discover -s backupmanager/tests # add -k $test_name 
+
+  if [ "$OMIT_INTEGRATION_TESTS" -ne 1 ]
+  then
+    coverage run --append -m unittest discover -s backupmanager/integration_tests --failfast # add -k $test_name
+  fi
+
+  coverage report backupmanager/*.py
   
 # 
 # if [[ $RUN_UNIT_TESTS == 1 ]]; then
@@ -276,7 +288,7 @@ Options:
   -e OVERRIDE_ENV_VARS_PATH
      Path to the file that contains the any overriding env vars.
 
-  -i OMMIT_INTEGRATION_TESTS
+  -i OMIT_INTEGRATION_TESTS
      Ommit running the integration tests and just run the unit tests.
 
   -l LEAVE
@@ -314,12 +326,13 @@ EOF
 HELP=0
 LEAVE=0
 TEARDOWN=0
+TEARDOWN_ONLY=0
 SETUP_ONLY=0
 EXPORT_ENV_VARS_ONLY=0
 OVERRIDE_ENV_VARS_PATH=0
-OMMIT_INTEGRATION_TESTS=0
+OMIT_INTEGRATION_TESTS=0
 
-PARSED_OPTIONS=`getopt -o hltie: -l export-env-vars-only,setup-only -- "$@"`
+PARSED_OPTIONS=`getopt -o hltie: -l export-env-vars-only,setup-only,teardown-only -- "$@"`
 
 # Check to see if the getopts command failed
 if [ $? -ne 0 ];
@@ -338,8 +351,13 @@ while true; do
          shift
          ;;
 
+      -e)
+         OVERRIDE_ENV_VARS_PATH=$2
+         shift 2
+         ;;
+
       -i)
-         OMMIT_INTEGRATION_TESTS=1
+         OMIT_INTEGRATION_TESTS=1
          shift
          ;;
 
@@ -353,6 +371,7 @@ while true; do
          shift
          ;;
 
+
       --export-env-vars-only)
          EXPORT_ENV_VARS_ONLY=1
          shift
@@ -363,10 +382,11 @@ while true; do
          shift
          ;;
 
-      -e)
-         OVERRIDE_ENV_VARS_PATH=$2
-         shift 2
+      --teardown-only)
+         TEARDOWN_ONLY=1
+         shift
          ;;
+
 
       --)
          shift
@@ -408,27 +428,32 @@ else
   #
   # If we are to do more than export env vars, continue processing
   #
-  if [ "$TEARDOWN" -eq 1 ]
+  if [ "$TEARDOWN_ONLY" -eq 1 ]
   then
     teardown
     exit
   fi
 
-  setup
-  echo "Test environment setup complete"
-
-  if [ "$SETUP_ONLY" -ne 1 ]
+  if [ "$SETUP_ONLY" -eq 1 ]
   then
-    time run_tests
+    setup
+    exit
   fi
 
-  if [ "$LEAVE" -ne 0 ]
+  if [ "$LEAVE" -eq 0 ]
+  then
+    # We are to run setup which will clean any existing test environment
+    setup
+  fi
+
+  time run_tests
+
+  if [ "$TEARDOWN" -eq 1 ]
   then
     #
     # We should teardown the test setup environment
     #
     teardown
-    echo "Test environment clean-up complete"
   fi
 fi
 
