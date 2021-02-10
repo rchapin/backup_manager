@@ -1,5 +1,7 @@
 import logging
 import sys
+from invoke import Collection, task, exceptions, run
+from fabric import Connection
 from backupmanager.integration_tests.it_base import ITBase
 
 logging.basicConfig(
@@ -11,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 class ITBackupManager(ITBase):
 
-    def setup(self):
+    def setUp(self):
         logger.info('Running setup')
         self.setup_base()
 
     def test_something(self):
-        print('test_something')
+        logger.info('test_something')
         pass

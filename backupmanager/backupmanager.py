@@ -1,13 +1,22 @@
+import logging
 import signal
-from backupmanager.lib.utils import Utils
+import sys
+from backupmanager.utils import Utils
 from apscheduler import events
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+logging.basicConfig(
+    format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
+    level=logging.INFO,
+    stream=sys.stdout)
+
+logger = logging.getLogger(__name__)
+
 class BackupManager(object):
 
-    def __init__(self, args, logger):
-        self.logger = logger
+    def __init__(self, args):
+        logging.getLogger().setLevel(args.loglevel.upper())
         self.configs = Utils.load_configs(args.configfile)
         self.scheduler = BackgroundScheduler()
         self.scheduler.add_listener(self.event_listener)
@@ -20,13 +29,12 @@ class BackupManager(object):
         if event.code == events.EVENT_JOB_ADDED:
             for job in self.scheduler.get_jobs():
                 if event.code != events.EVENT_JOB_EXECUTED:
-                    self.logger.info(f'Job id={job.id}, scheduled for next run at {job.next_run_time}')
+                    logger.info(f'Job id={job.id}, scheduled for next run at {job.next_run_time}')
 
         if self.runonce and event.code == events.EVENT_JOB_EXECUTED:
             if self.scheduler.running:
-                self.logger.info('Shutting down scheduler')
+                logger.info('Shutting down scheduler')
                 self.scheduler.shutdown(wait=False)
-
 
     def run(self):
         # Register for the SIGTERM signal so that we can cleanly shutdown
@@ -39,19 +47,19 @@ class BackupManager(object):
 
         while self.scheduler.running:
             self.scheduler._thread.join(0.1)
-        self.logger('BackupManager exiting run')
+        logger('BackupManager exiting run')
 
     def exec_job(self):
-        self.logger.info('Starting exec_job....')
+        logger.info('Starting exec_job....')
         if self.running:
-            self.logger.warning(f'Unable to schedule multiple...')
+            logger.warning(f'Unable to schedule multiple...')
             return
 
         self.running = True;
 
         # Iterate over all of the sync_jobs.
         for sync_job in self.configs['sync_jobs']:
-            self.logger.info(f'Executing sync_job={sync_job}')
+            logger.info(f'Executing sync_job={sync_job}')
             '''
             First, check to see if there is a 'blocks_on' key defined for this job.
             If so, ensure that there is no pid file with an running process on the
@@ -59,7 +67,7 @@ class BackupManager(object):
             '''
             if 'blocks_on' in sync_job:
                 blocks_on = sync_job['blocks_on']
-                self.logger.info(f'Validating blocks_on={blocks_on}')
+                logger.info(f'Validating blocks_on={blocks_on}')
             pass
 
 
@@ -67,18 +75,18 @@ class BackupManager(object):
 
     def schedule_runonce_job(self):
         if not self.running:
-            self.logger.info(f'Scheduling a runonce job')
+            logger.info(f'Scheduling a runonce job')
             self.scheduler.add_job(
                 max_instances=1,
                 id='runonce',
                 func=self.exec_job)
 
     def schedule_cron_job(self):
-        self.logger.info(f'Scheduling cron job with schedule={self.cron_schedule}')
+        logger.info(f'Scheduling cron job with schedule={self.cron_schedule}')
         self.scheduler.add_job(
             func=self.exec_job,
             trigger=CronTrigger.from_crontab(self.cron_schedule))
 
     def signal_handler(self, signal, frame):
-        self.logger(f'Handling signal={signal}, frame={frame}')
+        logger(f'Handling signal={signal}, frame={frame}')
         self.scheduler.shutdown(wait=True)

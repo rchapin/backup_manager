@@ -36,9 +36,8 @@ def parse_args():
 def main():
     args = parse_args()
     logging.getLogger().setLevel(args.loglevel.upper())
-    backupManger = BackupManager(args, logger)
+    backupManger = BackupManager(args)
     backupManger.run()
-
 
 ###############################################################################
 # MAIN

@@ -244,35 +244,21 @@ function teardown {
 
 function run_tests {
   set -e
-
   source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
 
   # Run the unit tests
+  echo "======================================================================="
   echo "Running the unit tests"
   coverage run -m unittest discover -s backupmanager/tests # add -k $test_name 
 
   if [ "$OMIT_INTEGRATION_TESTS" -ne 1 ]
   then
+    echo "======================================================================="
+    echo "Running the integration tests"
     coverage run --append -m unittest discover -s backupmanager/integration_tests --failfast # add -k $test_name
   fi
 
   coverage report backupmanager/*.py
-  
-# 
-# if [[ $RUN_UNIT_TESTS == 1 ]]; then
-#   # Run the unit tests first
-#   APPEND="--append"
-#   trace "Running unit tests"
-#   (cd $SCRIPT_DIR && coverage run -m unittest discover -s ${APP_NAME}/tests $TEST_NAMES)
-# fi
-# 
-# if [[ $RUN_INTEGRATION_TESTS == 1 ]]; then
-#   # Install application and run the integration test
-#   (cd $SCRIPT_DIR && coverage run ${APPEND} -m unittest discover --failfast --pattern integration_test.py $TEST_NAMES)
-# fi
-# 
-# coverage report ${APP_NAME}/*.py
-
   set +e
 }
 
