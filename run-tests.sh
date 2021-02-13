@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 ###############################################################################
 # Wrapper script for setting up and running backup_manager tests
@@ -15,15 +15,15 @@
 #    PARAMETERS:  None
 #       RETURNS:  void
 #-------------------------------------------------------------------------------
-function export_env_vars {
+export_env_vars() {
   set -e
 
-  local override_env_vars=$1
+  override_env_vars=$1
   if [ "$override_env_vars" != "0" ]
   then
     if [ ! -f "$override_env_vars" ]
     then
-      printf "ERROR! OVERRIDE_ENV_VARS_PATH, -e argument, pointed to a non-existant file\n\n" >&2
+      printf "ERROR! OVERRIDE_ENV_VARS_PATH, -e argument, pointed to a non-existant file\\n\\n" >&2
       usage
       #
       # We don't just exit here, because we may be sourcing this script and it would
@@ -34,7 +34,7 @@ function export_env_vars {
       #
     fi
     echo "Sourcing required env vars script $OVERRIDE_ENV_VARS_PATH"
-    source $OVERRIDE_ENV_VARS_PATH
+    source "$OVERRIDE_ENV_VARS_PATH"
   fi
 
   # ------------------------------------------------------------------------------
