@@ -1,7 +1,9 @@
+from invoke import run
 import logging
 import unittest
 import os
 import sys
+from os.path import stat
 
 logging.basicConfig(
     format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
@@ -21,6 +23,14 @@ class ITBase(unittest.TestCase):
     def setUpClass(cls):
         ITBase.env_vars = ITBase.read_env_vars()
 
+    @staticmethod
+    def is_docker_container_running():
+        result = run(f"docker ps | grep {ITBase.env_vars['BACKUPMGRINTTEST_IMAGE_NAME']}", warn=True)
+        if result.ok:
+            return True
+        else:
+            return False
+
     @classmethod
     def read_env_vars(cls):
         retval = {}
@@ -32,6 +42,19 @@ class ITBase(unittest.TestCase):
     def setup_base(self):
         logger.info('Running setup_base')
         pass
+
+    def start_docker_container(self):
+        self.stop_docker_container()
+        run(
+            f"docker run --rm -d --name {ITBase.env_vars['BACKUPMGRINTTEST_CONTAINER_NAME']} "
+            f"-p {ITBase.env_vars['BACKUPMGRINTTEST_CONTAINER_PORT']}:22 "
+            f"{ITBase.env_vars['BACKUPMGRINTTEST_IMAGE_NAME']}"
+        )
+
+    def stop_docker_container(self):
+        # First see if the container is running
+        if ITBase.is_docker_container_running():
+            run(f"docker stop {ITBase.env_vars['BACKUPMGRINTTEST_IMAGE_NAME']}")
 
     def build_config(self):
         pass
