@@ -3,6 +3,7 @@ import sys
 from invoke import Collection, task, exceptions, run
 from fabric import Connection
 from backupmanager.integration_tests.it_base import ITBase
+from backupmanager.integration_tests.int_test_utils import IntegrationTestUtils
 
 logging.basicConfig(
     format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
@@ -16,10 +17,12 @@ class ITBackupManager(ITBase):
     def setUp(self):
         logger.info('Running setup')
         self.setup_base()
-        self.start_docker_container()
+        IntegrationTestUtils.start_docker_container(ITBase.test_configs)
+        print('foo')
+
+    def tearDown(self):
+        self.tear_down()
 
     def test_something(self):
         logger.info('test_something')
         configs = self.build_config()
-
-        pass

@@ -90,7 +90,7 @@ function install_dependencies {
   case $distro in
 
     debian)
-      ssh root@localhost apt-get install -y sshpass
+      ssh root@localhost apt-get install -y netcat-traditional rsync sshpass
       ;;
 
     redhat)
@@ -119,6 +119,9 @@ function build_docker_test_image {
   cp backupmanager/integration_tests/docker/Dockerfile $BACKUPMGRINTTEST_DOCKER_DIR
   cd $BACKUPMGRINTTEST_DOCKER_DIR
   docker build --build-arg root_passwd=$BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD -t $BACKUPMGRINTTEST_IMAGE_NAME .
+
+  # Write out the password to a text file
+  echo "$BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD" > $BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD_FILE
 
   cd $start_dir
 }
