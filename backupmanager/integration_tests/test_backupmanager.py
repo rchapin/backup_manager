@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from invoke import Collection, task, exceptions, run
 from fabric import Connection
@@ -25,4 +26,22 @@ class ITBackupManager(ITBase):
 
     def test_something(self):
         logger.info('test_something')
-        configs = self.build_config()
+        configs = IntegrationTestUtils.build_base_config(ITBase.test_configs)
+        jobs = []
+        job = {}
+        job['id'] = 'local_to_container'
+        job['user'] = 'root'
+        job['host'] = ITBase.test_configs.test_host
+        job['port'] = ITBase.test_configs.container_port
+
+        # Create lock file on the localhost
+        lock_files = dict(
+            type='local',
+            path=os.path.join(ITBase.test_configs.lock_dir, 'lock_file'),
+            )
+
+        syncs = dict(
+            )
+
+
+

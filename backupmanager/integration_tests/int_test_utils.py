@@ -20,6 +20,12 @@ WAIT_FOR_DOCKER_SSH_SLEEP_TIME = 1
 class IntegrationTestUtils(object):
 
     @staticmethod
+    def build_base_config(configs):
+        retval = {}
+        retval['pid_file_dir'] = configs.parent_dir
+        return retval
+
+    @staticmethod
     def get_test_docker_conn(env_vars):
         return Connection(
             host=env_vars[''],
@@ -51,6 +57,7 @@ class IntegrationTestUtils(object):
 
         attributes = ' '.join(attributes_list)
         test_conf = namedtuple(TEST_CONF_NAMED_TUPLE, attributes)
+        retval = test_conf(*values)
 
         '''
         Sort the list to print log message.  DO NOT sort prior to generating
@@ -58,9 +65,13 @@ class IntegrationTestUtils(object):
         will not be correct.
         '''
         attributes_list.sort()
-        logger.info(f'Generating TestConfigs namedtuple with attributes={attributes_list}')
-        retval = test_conf(*values)
-        logger.info(f'Returning TestConfigs={retval}')
+        log_msg = ''
+        idx = 0
+        for a in attributes_list:
+            log_msg = log_msg + f'{a}:{retval[idx]}\n'
+            idx += 1
+
+        logger.info(f'Generating TestConfigs namedtuple with attributes:\n{log_msg}')
         return retval
 
     @staticmethod
