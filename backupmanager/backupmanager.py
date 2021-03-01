@@ -1,7 +1,8 @@
 import logging
 import signal
 import sys
-from backupmanager.utils import Utils
+import time
+from utils import Utils
 from apscheduler import events
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -13,6 +14,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+ENV_VAR_PREFIX = 'BACKUPMGR'
+
 class BackupManager(object):
 
     def __init__(self, args):
@@ -22,8 +25,14 @@ class BackupManager(object):
         self.scheduler.add_listener(self.event_listener)
         self.running = False
         self.shutdown = False
-        self.runonce = False
         self.cron_schedule = self.configs['cron_schedule']
+
+        env_vars = Utils.get_env_vars(ENV_VAR_PREFIX)
+        runonce_env_var_key = f'{ENV_VAR_PREFIX}_RUNONCE'
+        if runonce_env_var_key in env_vars:
+            self.runonce = True if env_vars[runonce_env_var_key] is '1' else False
+        else:
+            self.runonce = False
 
     def event_listener(self, event):
         if event.code == events.EVENT_JOB_ADDED:
@@ -34,6 +43,8 @@ class BackupManager(object):
         if self.runonce and event.code == events.EVENT_JOB_EXECUTED:
             if self.scheduler.running:
                 logger.info('Shutting down scheduler')
+                job = self.scheduler.get_job('runonce')
+                logger.info(f'job={job}')
                 self.scheduler.shutdown(wait=False)
 
     def run(self):
@@ -47,7 +58,7 @@ class BackupManager(object):
 
         while self.scheduler.running:
             self.scheduler._thread.join(0.1)
-        logger('BackupManager exiting run')
+        logger.info('BackupManager exiting run')
 
     def exec_job(self):
         logger.info('Starting exec_job....')
@@ -58,20 +69,21 @@ class BackupManager(object):
         self.running = True;
 
         # Iterate over all of the sync_jobs.
-        for sync_job in self.configs['sync_jobs']:
-            logger.info(f'Executing sync_job={sync_job}')
-            '''
-            First, check to see if there is a 'blocks_on' key defined for this job.
-            If so, ensure that there is no pid file with an running process on the
-            defined host.
-            '''
-            if 'blocks_on' in sync_job:
-                blocks_on = sync_job['blocks_on']
-                logger.info(f'Validating blocks_on={blocks_on}')
-            pass
-
+        for job in self.configs['jobs']:
+            logger.info(f'Executing job={job}')
+            # time.sleep(0.001)
+            # '''
+            # First, check to see if there is a 'blocks_on' key defined for this job.
+            # If so, ensure that there is no pid file with an running process on the
+            # defined host.
+            # '''
+            # if 'blocks_on' in sync_job:
+                # blocks_on = sync_job['blocks_on']
+                # logger.info(f'Validating blocks_on={blocks_on}')
+            # pass
 
         self.running = False;
+        logger.info('Finishing exec_job....')
 
     def schedule_runonce_job(self):
         if not self.running:

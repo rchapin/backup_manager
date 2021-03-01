@@ -1,7 +1,15 @@
+import os
 import yaml
 from fabric import Connection
 
 class Utils(object):
+    @staticmethod
+    def get_env_vars(prefix):
+        retval = {}
+        for k, v in os.environ.items():
+            if prefix in k:
+                retval[k] = v
+        return retval
 
     @staticmethod
     def load_configs(configfile):

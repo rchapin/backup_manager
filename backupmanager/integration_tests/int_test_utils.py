@@ -3,8 +3,12 @@ from fabric import Connection
 from invoke import Collection, task, exceptions, run
 import logging
 import os
+import random
+import string
 import sys
 import time
+import yaml
+from backupmanager.utils import Utils
 
 logging.basicConfig(
     format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
@@ -26,6 +30,21 @@ class IntegrationTestUtils(object):
         return retval
 
     @staticmethod
+    def create_test_file(output_dir, file_name, num_chars):
+        '''
+        Will create a test file with the specified number of random characters.
+        '''
+        # Create the dir if it does not exist
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, file_name)
+        with open(output_path, 'w') as fh:
+            data = ''.join(random.choices(string.ascii_uppercase + string.digits, k=num_chars))
+            fh.write(data)
+
+        size = os.path.getsize(output_path)
+        return output_path, size
+
+    @staticmethod
     def get_test_docker_conn(env_vars):
         return Connection(
             host=env_vars[''],
@@ -43,17 +62,17 @@ class IntegrationTestUtils(object):
 
     @classmethod
     def read_env_vars(cls):
+        env_vars = Utils.get_env_vars(ENV_VAR_PREFIX)
         attributes_list = []
         values = []
-        for k, v in os.environ.items():
-            if ENV_VAR_PREFIX in k:
-                '''
-                Generate an attribute name for the namedtuple by removing the
-                the prefix from the key and converting it to lower-case.
-                '''
-                key = k.replace(f'{ENV_VAR_PREFIX}_', '').lower()
-                attributes_list.append(key)
-                values.append(v)
+        for k, v in env_vars.items():
+            '''
+            Generate an attribute name for the namedtuple by removing the
+            the prefix from the key and converting it to lower-case.
+            '''
+            key = k.replace(f'{ENV_VAR_PREFIX}_', '').lower()
+            attributes_list.append(key)
+            values.append(v)
 
         attributes = ' '.join(attributes_list)
         test_conf = namedtuple(TEST_CONF_NAMED_TUPLE, attributes)
@@ -107,3 +126,8 @@ class IntegrationTestUtils(object):
             else:
                 logger.info(f'Test docker container is not accepting connections ssh connections on port={port}')
                 break
+
+    @staticmethod
+    def write_yaml_file(output_path, data):
+        with open(output_path, 'w') as fh:
+            yaml.dump(data, fh)

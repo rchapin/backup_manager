@@ -15,7 +15,9 @@ RUN apk add --no-cache \
     # Create an .ssh dir for the root user and set the permissions
     && mkdir /root/.ssh \
     && chown root: /root/.ssh \
-    && chmod 700 /root/.ssh
+    && chmod 700 /root/.ssh \
+    # Create a directory into which we will sync data for the tests
+    && mkdir /data
 
 COPY id_rsa.pub /root/.ssh/authorized_keys
 RUN chmod 600 /root/.ssh/authorized_keys
