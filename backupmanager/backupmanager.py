@@ -21,6 +21,8 @@ class BackupManager(object):
     def __init__(self, args):
         logging.getLogger().setLevel(args.loglevel.upper())
         self.configs = Utils.load_configs(args.configfile)
+        # TODO: validate configs
+        # Check for existing pid file
         self.scheduler = BackgroundScheduler()
         self.scheduler.add_listener(self.event_listener)
         self.running = False
@@ -45,7 +47,10 @@ class BackupManager(object):
                 logger.info('Shutting down scheduler')
                 job = self.scheduler.get_job('runonce')
                 logger.info(f'job={job}')
-                self.scheduler.shutdown(wait=False)
+                try:
+                    self.scheduler.shutdown(wait=False)
+                except Exception as e:
+                    logger.info(f'Caught exception shutting down the scheduler; e={e}')
 
     def run(self):
         # Register for the SIGTERM signal so that we can cleanly shutdown
@@ -71,7 +76,6 @@ class BackupManager(object):
         # Iterate over all of the sync_jobs.
         for job in self.configs['jobs']:
             logger.info(f'Executing job={job}')
-            # time.sleep(0.001)
             # '''
             # First, check to see if there is a 'blocks_on' key defined for this job.
             # If so, ensure that there is no pid file with an running process on the
