@@ -5,6 +5,7 @@ import os
 import shutil
 import sys
 from backupmanager.integration_tests.int_test_utils import IntegrationTestUtils
+from backupmanager.lib.backupmanager import BackupManager
 
 logging.basicConfig(
     format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
@@ -17,28 +18,52 @@ DOCKER_SSH_WAIT_TIME = 1
 
 class ITBase(unittest.TestCase):
 
-    env_vars = None
-    test_configs = None
-
-    @classmethod
-    def setUpClass(cls):
-        ITBase.test_configs = IntegrationTestUtils.read_env_vars();
-
-    def run_backup_manager(self):
-        pass
+    def run_backup_manager(self, config_path, expected_files):
+        # Build the cli args
+        args = dict(
+            configfile=config_path,
+            dryrun=False,
+            loglevel='info',
+            )
+        backupmanager = BackupManager(args)
+        self.validate_post_contitions(expected_files)
 
     def setup_base(self):
         logger.info('Running setup_base')
+        self.test_configs = IntegrationTestUtils.get_test_configs()
+
         # Clean any test dirs if they exist and then recreate them
         test_dirs = [
-            ITBase.test_configs.config_dir,
-            ITBase.test_configs.lock_dir,
-            ITBase.test_configs.pid_dir,
-            ITBase.test_configs.test_data_dir,
+            self.test_configs.config_dir,
+            self.test_configs.lock_dir,
+            self.test_configs.pid_dir,
+            self.test_configs.test_data_dir,
             ]
         for d in test_dirs:
             shutil.rmtree(d, ignore_errors=True)
             os.makedirs(d, exist_ok=True)
 
     def tear_down(self):
-        IntegrationTestUtils.stop_docker_container(ITBase.test_configs)
+        IntegrationTestUtils.stop_docker_container(self.test_configs)
+
+    def validate_post_contitions(self, expected_files):
+        logger.info('Validating post conditions')
+        '''
+        Iterate over each of the extected files dicts and ensure that there is
+        a file in the path specified that is the specified size in bytes.
+        '''
+        conn = IntegrationTestUtils.get_test_docker_conn(self.test_configs)
+        for expected_file in expected_files:
+            # Get the size from an expected path
+            expected_path = expected_file['expected_path']
+            result = conn.run(f"stat -c '%s' {expected_path}", warn=True)
+            if result.ok:
+                actual_size = int(result.stdout.strip())
+                expected_size = expected_file['expected_size']
+                self.assertEqual(
+                    expected_size,
+                    actual_size,
+                    f'expected_path={expected_path} expected_size={expected_size} != actual_size={actual_size}')
+            else:
+                self.fail(f'expected_path={expected_path} was not found')
+

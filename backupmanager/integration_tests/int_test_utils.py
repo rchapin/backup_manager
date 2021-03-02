@@ -1,6 +1,6 @@
 from collections import namedtuple
 from fabric import Connection
-from invoke import Collection, task, exceptions, run
+from invoke import run
 import logging
 import os
 import random
@@ -8,7 +8,8 @@ import string
 import sys
 import time
 import yaml
-from backupmanager.utils import Utils
+from backupmanager.lib.utils import Utils
+from pickle import NONE
 
 logging.basicConfig(
     format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
@@ -45,12 +46,17 @@ class IntegrationTestUtils(object):
         return output_path, size
 
     @staticmethod
-    def get_test_docker_conn(env_vars):
+    def does_file_exist(test_config, path):
+        pass
+
+    @staticmethod
+    def get_test_docker_conn(test_configs):
         return Connection(
-            host=env_vars[''],
+            host=test_configs.test_host,
             user='root',
-            port=env_vars['BACKUPMGRINTTEST_CONTAINER_PORT'],
-            key_filename=env_vars['BACKUPMGRINTTEST_SSH_IDENTITY_FILE_PUB'])
+            port=test_configs.container_port,
+            connect_kwargs=dict(key_filename=test_configs.ssh_identity_file)
+            )
 
     @staticmethod
     def is_docker_container_running(configs):
@@ -61,7 +67,7 @@ class IntegrationTestUtils(object):
             return False
 
     @classmethod
-    def read_env_vars(cls):
+    def get_test_configs(cls):
         env_vars = Utils.get_env_vars(ENV_VAR_PREFIX)
         attributes_list = []
         values = []
@@ -78,18 +84,15 @@ class IntegrationTestUtils(object):
         test_conf = namedtuple(TEST_CONF_NAMED_TUPLE, attributes)
         retval = test_conf(*values)
 
-        '''
-        Sort the list to print log message.  DO NOT sort prior to generating
-        the attributes string or the order of the attribute names and values
-        will not be correct.
-        '''
-        attributes_list.sort()
-        log_msg = ''
+        # Generate a log message of all of the test config values.
+        entries = []
         idx = 0
-        for a in attributes_list:
-            log_msg = log_msg + f'{a}:{retval[idx]}\n'
+        for attrib in attributes_list:
+            entries.append(f'{attrib}:{values[idx]}')
             idx += 1
 
+        entries.sort()
+        log_msg = '\n'.join(entries)
         logger.info(f'Generating TestConfigs namedtuple with attributes:\n{log_msg}')
         return retval
 

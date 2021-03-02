@@ -1,7 +1,7 @@
 import sys
 import logging
 import argparse
-from backupmanager import BackupManager
+from backupmanager.lib.backupmanager import BackupManager
 
 # For the time-being, we are just logging to the console
 logging.basicConfig(
@@ -31,11 +31,17 @@ def parse_args():
         action='store_true',
         help='Run in dryrun mode')
 
-    return parser.parse_args()
+    # Build a standard dict of the CLI args
+    args = parser.parse_args()
+    return dict(
+        configfile=args.configfile,
+        loglevel=args.loglevel,
+        dryrun=args.dryrun,
+        )
 
 def main():
     args = parse_args()
-    logging.getLogger().setLevel(args.loglevel.upper())
+    logging.getLogger().setLevel(args['loglevel'].upper())
     backupManger = BackupManager(args)
     backupManger.run()
 

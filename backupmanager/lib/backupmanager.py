@@ -2,7 +2,7 @@ import logging
 import signal
 import sys
 import time
-from utils import Utils
+from backupmanager.lib.utils import Utils
 from apscheduler import events
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -19,8 +19,11 @@ ENV_VAR_PREFIX = 'BACKUPMGR'
 class BackupManager(object):
 
     def __init__(self, args):
-        logging.getLogger().setLevel(args.loglevel.upper())
-        self.configs = Utils.load_configs(args.configfile)
+        logging.getLogger().setLevel(args['loglevel'].upper())
+        self.configfile = args['configfile']
+        self.dryrun = args['dryrun']
+
+        self.configs = Utils.load_configs(self.configfile)
         # TODO: validate configs
         # Check for existing pid file
         self.scheduler = BackgroundScheduler()
