@@ -44,6 +44,7 @@ def main():
     logging.getLogger().setLevel(args['loglevel'].upper())
     backupManger = BackupManager(args)
     backupManger.run()
+    logger.info('Exiting process')
 
 ###############################################################################
 # MAIN

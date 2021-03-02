@@ -6,6 +6,8 @@ from invoke import Collection, task, exceptions, run
 from fabric import Connection
 from backupmanager.integration_tests.it_base import ITBase
 from backupmanager.integration_tests.int_test_utils import IntegrationTestUtils
+from backupmanager.lib.backupmanager import BackupManager
+from backupmanager.lib.backupmanager import PID_FILE_NAME
 
 logging.basicConfig(
     format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
@@ -24,6 +26,22 @@ class ITBackupManager(ITBase):
 
     def tearDown(self):
         self.tear_down()
+
+    def test_will_shutdown_when_finding_an_existing_pid_file_that_is_not_our_pid(self):
+        # Get our pid and then write out a pid file with a different pid
+        our_pid = os.getpid()
+        pid_file_path = os.path.join(self.test_configs.pid_dir, PID_FILE_NAME)
+        with open(pid_file_path, 'w') as fh:
+            other_pid = str(our_pid + 31)
+            # Include a trailing carriage return
+            fh.write(other_pid)
+
+        configs = self.build_config()
+        IntegrationTestUtils.write_configs(self.test_configs, configs)
+        args = self.get_default_args()
+        backupmanager = BackupManager(args)
+        backupmanager.run()
+
 
     def test_something(self):
         logger.info('test_something')

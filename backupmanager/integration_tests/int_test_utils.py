@@ -131,6 +131,11 @@ class IntegrationTestUtils(object):
                 break
 
     @staticmethod
+    def write_configs(test_configs, configs):
+        output_path = os.path.join(test_configs.config_dir, test_configs.config_file)
+        IntegrationTestUtils.write_yaml_file(output_path, configs)
+
+    @staticmethod
     def write_yaml_file(output_path, data):
         with open(output_path, 'w') as fh:
             yaml.dump(data, fh)

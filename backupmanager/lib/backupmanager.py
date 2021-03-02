@@ -1,7 +1,7 @@
 import logging
+import os
 import signal
 import sys
-import time
 from backupmanager.lib.utils import Utils
 from apscheduler import events
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -14,6 +14,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+PID_FILE_NAME = 'pid'
 ENV_VAR_PREFIX = 'BACKUPMGR'
 
 class BackupManager(object):
@@ -25,6 +26,11 @@ class BackupManager(object):
 
         self.configs = Utils.load_configs(self.configfile)
         # TODO: validate configs
+
+        if not Utils.write_pid(configs=self.configs, pid_file_name=PID_FILE_NAME):
+            logger.info('Shutting down')
+            return
+
         # Check for existing pid file
         self.scheduler = BackgroundScheduler()
         self.scheduler.add_listener(self.event_listener)
@@ -38,6 +44,7 @@ class BackupManager(object):
             self.runonce = True if env_vars[runonce_env_var_key] is '1' else False
         else:
             self.runonce = False
+
 
     def event_listener(self, event):
         if event.code == events.EVENT_JOB_ADDED:

@@ -19,14 +19,29 @@ DOCKER_SSH_WAIT_TIME = 1
 class ITBase(unittest.TestCase):
 
     def run_backup_manager(self, config_path, expected_files):
-        # Build the cli args
-        args = dict(
-            configfile=config_path,
-            dryrun=False,
-            loglevel='info',
-            )
+        args = self.get_default_args()
         backupmanager = BackupManager(args)
+        backupmanager.run()
         self.validate_post_contitions(expected_files)
+
+    def build_config(self, cron_schedule='* * * * *', jobs=None):
+        retval = {}
+        retval['pid_file_dir'] = self.test_configs.pid_dir
+        retval['cron_schedule'] = cron_schedule
+        if jobs:
+            retval['jobs'] = jobs
+        return retval
+
+    def build_job_config(self):
+        pass
+
+    def get_default_args(self, loglevel='info', dryrun=False):
+        config_path = os.path.join(self.test_configs.config_dir, self.test_configs.config_file)
+        return dict(
+            configfile=config_path,
+            dryrun=dryrun,
+            loglevel=loglevel,
+            )
 
     def setup_base(self):
         logger.info('Running setup_base')

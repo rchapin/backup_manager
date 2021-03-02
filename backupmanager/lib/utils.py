@@ -1,8 +1,31 @@
 import os
-import yaml
+from pathlib import Path
+
 from fabric import Connection
+import yaml
 
 class Utils(object):
+
+    @staticmethod
+    def does_pid_file_exist(pid_path):
+        path = Path(pid_path)
+
+        if path.is_dir():
+            return False, -1
+
+        if path.is_file():
+            # Read the existing file and get the pid if there is one
+            existing_pid = None
+            with open(pid_path, 'r') as fh:
+                pid_path_contents = fh.read().strip()
+            try:
+                existing_pid = int(pid_path_contents)
+            except Exception as e:
+                # If this fails, we will assume that there isn't a valid process running
+                pass
+
+
+
     @staticmethod
     def get_env_vars(prefix):
         retval = {}
@@ -43,3 +66,8 @@ class Utils(object):
                 pid = result.stdout
                 logger.info(f'pid={pid}')
 
+    @staticmethod
+    def write_pid(configs, pid_file_name):
+        our_pid = os.getpid()
+        pid_path = os.path.join(configs['pid_file_dir'], pid_file_name)
+        success, existing_pid = Utils.does_pid_file_exist(pid_path)
