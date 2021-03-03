@@ -81,23 +81,22 @@ class Utils(object):
             if existing_pid == our_pid:
                 should_write_pid = True
 
-            '''
-            We need to verify that there is a process with the pid that is in
-            the current pid file.
-            '''
-            result = run(f'ps --pid {existing_pid}')
-            if result.ok:
-                # There is some other process running that is not us.
-                should_write_pid = False
-
-        elif existing_pid is None:
-            pass
+            if not should_write_pid:
+                '''
+                If the existing pid is not ours, we need to verify that there
+                is a process with the pid that is in the current pid file.
+                '''
+                result = run(f'ps --pid {existing_pid}')
+                if result.ok:
+                    # There is some other process running that is not us.
+                    should_write_pid = False
         else:
-            # There is no existing file or pid
+            # There is no existing file or there is no pid in that file
             should_write_pid = True
 
         # Write out the pid
         if should_write_pid:
-            pass
+            with open(pid_path, 'w') as fh:
+                fh.write(str(our_pid))
 
         return should_write_pid
