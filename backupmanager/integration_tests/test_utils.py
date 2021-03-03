@@ -4,6 +4,7 @@ import os
 from pathlib import Path, PurePath
 import sys
 import unittest
+from backupmanager.integration_tests.it_base import ITBase
 from backupmanager.lib.utils import Utils
 
 logging.basicConfig(
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 TEST_PID_PARENT_DIR = '/var/tmp/'
 TEST_PID_FILE_NAME = 'test_pid'
 
-class UtilsTest(unittest.TestCase):
+class UtilsTest(ITBase):
 
     def clean_up_test_pid(self, path):
         pass

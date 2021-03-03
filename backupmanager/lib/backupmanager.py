@@ -27,7 +27,7 @@ class BackupManager(object):
         self.configs = Utils.load_configs(self.configfile)
         # TODO: validate configs
 
-        if not Utils.write_pid(configs=self.configs, pid_file_name=PID_FILE_NAME):
+        if not Utils.write_pid(logger=logger, configs=self.configs, pid_file_name=PID_FILE_NAME):
             logger.info('Shutting down')
             return
 
