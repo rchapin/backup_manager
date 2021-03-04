@@ -58,6 +58,10 @@ function export_env_vars {
   export BACKUPMGRINTTEST_IMAGE_NAME=${BACKUPMGRINTTEST_IMAGE_NAME:-backup_manager_inttest}
   export BACKUPMGRINTTEST_CONTAINER_PORT=${BACKUPMGRINTTEST_CONTAINER_PORT:-22222}
 
+  # For each of the tests, we only want the BackupManager to run one time and
+  # not wait for a pre-determined time to run.
+  export BACKUPMGRINTTEST_RUNONCE=${BACKUPMGRINTTEST_RUNONCE:-1}
+
   # It doesn't really matter what this password is. We just need something
   # with which we can ssh/rsync to the container to execute the tests
   export BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD=${BACKUPMGRINTTEST_CONTAINER_ROOT_PASSWD:-password123}

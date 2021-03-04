@@ -86,10 +86,16 @@ class Utils(object):
                 If the existing pid is not ours, we need to verify that there
                 is a process with the pid that is in the current pid file.
                 '''
-                result = run(f'ps --pid {existing_pid}')
+                result = run(f'ps --pid {existing_pid}', warn=True)
                 if result.ok:
                     # There is some other process running that is not us.
                     should_write_pid = False
+                else:
+                    '''
+                    The pid points to a non-existant process, we should
+                    overwrite what is there with our pid.
+                    '''
+                    should_write_pid = True
         else:
             # There is no existing file or there is no pid in that file
             should_write_pid = True

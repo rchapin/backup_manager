@@ -28,7 +28,7 @@ setup(
     install_requires=open('requirements.txt').read().splitlines(),
     entry_points={
          'console_scripts': [
-             'backup_manager=backup_manager.main:main',
+             'backupmanager=backupmanager.main:main',
              ],
     },
 )

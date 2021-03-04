@@ -15,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 PID_FILE_NAME = 'pid'
-ENV_VAR_PREFIX = 'BACKUPMGR'
+ENV_VAR_PREFIX = 'BACKUPMGRINTTEST'
 
 class BackupManager(object):
 
@@ -35,7 +35,7 @@ class BackupManager(object):
         self.scheduler = BackgroundScheduler()
         self.scheduler.add_listener(self.event_listener)
         self.running = False
-        self.shutdown = False
+        self.is_shutdown = False
         self.cron_schedule = self.configs['cron_schedule']
 
         env_vars = Utils.get_env_vars(ENV_VAR_PREFIX)
@@ -63,8 +63,9 @@ class BackupManager(object):
                     logger.info(f'Caught exception shutting down the scheduler; e={e}')
 
     def run(self):
-        # Register for the SIGTERM signal so that we can cleanly shutdown
-        signal.signal(signal.SIGTERM, self.signal_handler)
+        # # Register for the SIGTERM signal so that we can cleanly shutdown
+        # signal.signal(signal.SIGTERM, self.signal_handler)
+
         self.scheduler.start()
         if self.runonce:
             self.schedule_runonce_job()
@@ -113,6 +114,11 @@ class BackupManager(object):
             func=self.exec_job,
             trigger=CronTrigger.from_crontab(self.cron_schedule))
 
-    def signal_handler(self, signal, frame):
-        logger(f'Handling signal={signal}, frame={frame}')
-        self.scheduler.shutdown(wait=True)
+    def shutdown(self):
+        logger.info('Shutting down ....')
+        self.scheduler.shutdown(wait=False)
+        self.is_shutdown = True
+
+    # def signal_handler(self, signal, frame):
+        # logger(f'Handling signal={signal}, frame={frame}')
+        # self.scheduler.shutdown(wait=True)

@@ -1,8 +1,7 @@
+import unittest
 import logging
 import os
 import sys
-import yaml
-from invoke import Collection, task, exceptions, run
 from fabric import Connection
 from backupmanager.integration_tests.it_base import ITBase
 from backupmanager.integration_tests.int_test_utils import IntegrationTestUtils
@@ -27,6 +26,7 @@ class ITBackupManager(ITBase):
     def tearDown(self):
         self.tear_down()
 
+    @unittest.skip('skip')
     def test_will_shutdown_when_finding_an_existing_pid_file_that_is_not_our_pid(self):
         # Get our pid and then write out a pid file with a different pid
         our_pid = os.getpid()

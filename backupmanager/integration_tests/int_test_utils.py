@@ -27,7 +27,7 @@ class IntegrationTestUtils(object):
     @staticmethod
     def build_base_config(configs):
         retval = {}
-        retval['pid_file_dir'] = configs.parent_dir
+        retval['pid_file_dir'] = configs.pid_dir
         return retval
 
     @staticmethod
