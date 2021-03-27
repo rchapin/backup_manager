@@ -45,7 +45,6 @@ class BackupManager(object):
         else:
             self.runonce = False
 
-
     def event_listener(self, event):
         if event.code == events.EVENT_JOB_ADDED:
             for job in self.scheduler.get_jobs():

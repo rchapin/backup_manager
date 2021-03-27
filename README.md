@@ -1,5 +1,8 @@
 # Backup Manager
 
+https://cuyu.github.io/python/2016/08/15/Terminate-multiprocess-in-Python-correctly-and-gracefully
+This is the solution for being able to kill an rsync job in the middle.  Actually run the rsync in a separate process that I can then kill if we receive a SIGTERM for the parent process.
+
 Automate rsync and creation of backup tarballs.
 
 
