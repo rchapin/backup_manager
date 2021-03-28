@@ -46,7 +46,6 @@ def signal_handler(signal_number, _frame):
     logger.info(f'Caught signal_number={signal_number}')
 
     if signal_number == signal.SIGHUP:
-        pass
         backupmanager.schedule_runonce_job()
     else:
         backupmanager.shutdown()

@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import os
 import signal
 import sys
@@ -6,6 +7,7 @@ from backupmanager.lib.utils import Utils
 from apscheduler import events
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from invoke import run
 
 logging.basicConfig(
     format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
@@ -37,6 +39,7 @@ class BackupManager(object):
         self.running = False
         self.is_shutdown = False
         self.cron_schedule = self.configs['cron_schedule']
+        self.process = None
 
         env_vars = Utils.get_env_vars(ENV_VAR_PREFIX)
         runonce_env_var_key = f'{ENV_VAR_PREFIX}_RUNONCE'
@@ -83,9 +86,27 @@ class BackupManager(object):
 
         self.running = True;
 
+        '''
+        '''
+        self.process = multiprocessing.Process(target=self.xec_process)
+        self.process.start()
+        self.process.join()
+
+#     .start()
+#     time.sleep(10)
+#     p.terminate()
+#     p.join()
+
+        self.running = False;
+        logger.info('Finishing exec_job....')
+
+    def exec_process(self):
         # Iterate over all of the sync_jobs.
         for job in self.configs['jobs']:
             logger.info(f'Executing job={job}')
+
+            # Some OS command to simulate a long running process
+            run('while true; do echo "sleep"; sleep 2; done')
             # '''
             # First, check to see if there is a 'blocks_on' key defined for this job.
             # If so, ensure that there is no pid file with an running process on the
@@ -96,8 +117,8 @@ class BackupManager(object):
                 # logger.info(f'Validating blocks_on={blocks_on}')
             # pass
 
-        self.running = False;
-        logger.info('Finishing exec_job....')
+
+        pass
 
     def schedule_runonce_job(self):
         if not self.running:
@@ -115,6 +136,13 @@ class BackupManager(object):
 
     def shutdown(self):
         logger.info('Shutting down ....')
+        # Kill any running process if one exists
+        if (self.process is not None):
+            if (self.process.is_alive()):
+                self.process.terminate()
+                # FIXME: make the timeout configurable
+                self.process.join(5)
+
         self.scheduler.shutdown(wait=False)
         self.is_shutdown = True
 
