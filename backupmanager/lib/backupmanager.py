@@ -4,6 +4,7 @@ import os
 import signal
 import sys
 from backupmanager.lib.utils import Utils
+from backupmanager.lib.rsync import Rsync
 from apscheduler import events
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -33,8 +34,7 @@ class BackupManager(object):
             logger.info('Shutting down')
             return
 
-        # Check for existing pid file
-        self.scheduler = BackgroundScheduler()
+        self.rsync_impl = self.configs['rsync_impl']
         self.scheduler.add_listener(self.event_listener)
         self.running = False
         self.is_shutdown = False
@@ -104,6 +104,13 @@ class BackupManager(object):
         # Iterate over all of the sync_jobs.
         for job in self.configs['jobs']:
             logger.info(f'Executing job={job}')
+
+            '''
+            We run the rsync command in a separate process altogether so that
+            we can kill it if need be.  Otherwise, we block on it.
+            '''
+            rsync = Rsync()
+            
 
             # Some OS command to simulate a long running process
             run('while true; do echo "sleep"; sleep 2; done')
