@@ -2,14 +2,15 @@ import logging
 import sys
 
 logging.basicConfig(
-    format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
+    format="%(asctime)s,%(levelname)s,%(module)s,%(message)s",
     level=logging.INFO,
-    stream=sys.stdout)
+    stream=sys.stdout,
+)
+
 
 class Rsync(object):
-
     def __init__(self, args):
-        logging.getLogger().setLevel(args['loglevel'].upper())
+        logging.getLogger().setLevel(args["loglevel"].upper())
 
     def linux_native(self):
         pass

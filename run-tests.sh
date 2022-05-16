@@ -7,6 +7,11 @@
 # author:   Ryan Chapin
 #
 ################################################################################
+# CONFIGS
+
+PYTHON=python3.9
+
+################################################################################
 #
 #---  FUNCTION  ----------------------------------------------------------------
 #          NAME:  export_env_vars
@@ -188,7 +193,7 @@ function configure_firewall {
 #   DESCRIPTION:  Create the virtual environment and install the application.
 #-------------------------------------------------------------------------------
 function create_virtenv {
-  $(which python3.7) -mvenv $BACKUPMGRINTTEST_VIRTENV_DIR
+  $(which $PYTHON) -mvenv $BACKUPMGRINTTEST_VIRTENV_DIR
   source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
   pip install -U setuptools pip coverage
   pip install .

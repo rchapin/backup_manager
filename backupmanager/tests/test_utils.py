@@ -7,11 +7,12 @@ import unittest
 from backupmanager.lib.utils import Utils
 
 logging.basicConfig(
-    format='%(asctime)s,%(levelname)s,%(module)s,%(message)s',
+    format="%(asctime)s,%(levelname)s,%(module)s,%(message)s",
     level=logging.INFO,
-    stream=sys.stdout)
+    stream=sys.stdout,
+)
+
 
 class UtilsTest(unittest.TestCase):
-
     def test_something(self):
         pass

@@ -26,7 +26,7 @@ class ITBackupManager(ITBase):
     def tearDown(self):
         self.tear_down()
 
-    @unittest.skip('skip')
+    # @unittest.skip('skip')
     def test_will_shutdown_when_finding_an_existing_pid_file_that_is_not_our_pid(self):
         # Get our pid and then write out a pid file with a different pid
         our_pid = os.getpid()
@@ -43,6 +43,7 @@ class ITBackupManager(ITBase):
         backupmanager.run()
 
 
+    @unittest.skip('skip')
     def test_something(self):
         logger.info('test_something')
         '''

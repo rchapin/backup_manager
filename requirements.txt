@@ -1,3 +1,4 @@
+black
 fabric==2.5.0
 invoke==1.5.0
 APScheduler==3.7.0
