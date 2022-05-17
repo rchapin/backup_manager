@@ -5,6 +5,7 @@ import sys
 from fabric import Connection
 from backupmanager.integration_tests.it_base import ITBase
 from backupmanager.integration_tests.int_test_utils import IntegrationTestUtils
+from backupmanager.integration_tests.int_test_utils import AppConfigs
 from backupmanager.lib.backupmanager import BackupManager
 from backupmanager.lib.backupmanager import PID_FILE_NAME
 
@@ -36,6 +37,8 @@ class ITBackupManager(ITBase):
             # Include a trailing carriage return
             fh.write(other_pid)
 
+        jobs = []
+        jobs.append()
         configs = self.build_config()
         IntegrationTestUtils.write_configs(self.test_configs, configs)
         args = self.get_default_args()

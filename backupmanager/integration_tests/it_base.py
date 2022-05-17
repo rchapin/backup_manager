@@ -25,17 +25,17 @@ class ITBase(unittest.TestCase):
         backupmanager.run()
         self.validate_post_contitions(expected_files)
 
-    def build_config(self, cron_schedule="* * * * *", jobs=None):
-        retval = {}
-        retval["pid_file_dir"] = self.test_configs.pid_dir
-        retval["cron_schedule"] = cron_schedule
-        retval["rsync_impl"] = "linux_native"
-        if jobs:
-            retval["jobs"] = jobs
-        return retval
-
-    def build_job_config(self):
-        pass
+    # def build_config(self, cron_schedule="* * * * *", jobs=None):
+    #     retval = {}
+    #     retval["pid_file_dir"] = self.test_configs.pid_dir
+    #     retval["cron_schedule"] = cron_schedule
+    #     retval["rsync_impl"] = "linux_native"
+    #     if jobs:
+    #         retval["jobs"] = jobs
+    #     return retval
+    #
+    # def build_job_config(self):
+    #     pass
 
     def get_default_args(self, loglevel="info", dryrun=False):
         config_path = os.path.join(
