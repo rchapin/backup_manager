@@ -4,7 +4,7 @@ import os
 import sys
 from fabric import Connection
 from backupmanager.integration_tests.it_base import ITBase
-from backupmanager.integration_tests.int_test_utils import IntegrationTestUtils
+from backupmanager.integration_tests.int_test_utils import IntegrationTestUtils, AppConfigs, Job, LockLocal, LockRemote, BlocksOnLocal, BlocksOnRemote, Sync
 from backupmanager.integration_tests.int_test_utils import AppConfigs
 from backupmanager.lib.backupmanager import BackupManager
 from backupmanager.lib.backupmanager import PID_FILE_NAME
@@ -36,6 +36,12 @@ class ITBackupManager(ITBase):
             other_pid = str(our_pid + 31)
             # Include a trailing carriage return
             fh.write(other_pid)
+
+        lock_files = [LockLocal(type="local", path=os.path.join(self.test_configs.lock_dir, "sync.lock"))]
+        syncs = [Sync(source="/var/tmp/somedir", dest="/var/tmp/some_other_dir", opts=None)]
+        jobs = [Job(id="job-id-1", user="root", host="other_host", port=None, lock_files=lock_files, blocks_on=None, syncs=syncs)]
+        app_configs = AppConfigs(cron_schedule="30 * * * *", jobs=jobs)
+        IntegrationTestUtils.build_test_configs(app_configs)
 
         jobs = []
         jobs.append()

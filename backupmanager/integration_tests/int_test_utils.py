@@ -20,13 +20,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 AppConfigs = namedtuple("AppConfigs", ["cron_schedule", "jobs"])
-Job = namedtuple("Job", ["id", "user", "host", "port"])
+Job = namedtuple("Job", ["id", "user", "host", "port", "lock_files", "blocks_on", "syncs"])
+LockLocal = namedtuple("Lock", ["type", "path"])
+LockRemote = namedtuple("LockRemote", ["type", "host", "user", "port", "path"])
+BlocksOnLocal = namedtuple("BlocksOnLocal", ["type", "lock_file_path"])
+BlocksOnRemote = namedtuple("BlocksOnRemote", ["type", "host", "user", "port", "lock_file_path"])
+Sync = namedtuple("Sync", ["source", "dest", "opts"])
 
 TEST_CONF_NAMED_TUPLE = "TestConfigs"
 ENV_VAR_PREFIX = "BACKUPMGRINTTEST"
 WAIT_FOR_DOCKER_SSH_SLEEP_TIME = 1
 
-CONFIG_TMPL="""
+CONFIG_TMPL = """
 cron_schedule: '${cron_schedule}'
 pid_file_dir: /var/tmp/backup_manager-integration-test/pid
 rsync_impl: linux_native
@@ -36,27 +41,31 @@ rsync_impl: linux_native
 jobs:
 """
 
-CONFIG_JOBS_TMPL="""
+CONFIG_JOB_TMPL = """
 id: ${id}
-# The user that we will use to make the rsync connection to
-# the dest host
+# The user that we will use to make the rsync connection to the dest host
 user: root
 host: backup_a.example.com
+
 # Optional overriding SSH port
 port: 22000
-# Definitions to any arbitrary number of lock files that
-# this process will create and manage on either the
-# localhost or any remote. The lockfiles will indicate that
-# this process is running the rsync job defined
+
+# Definitions to any arbitrary number of lock files that this process will create and manage on either the
+# localhost or any remote. The lockfiles will indicate that this process is running the rsync job defined
 lock_files:
-- type: local
-path: /var/run/backupmanager/local_desktop_to_backup_a
-- type: remote
-host: backup_a.example.com
-user: root
-# Optional overriding SSH port
-port: 22000
-path: /var/run/backupmanager/local_desktop_to_backup_a
+  - type: local
+    path: /var/run/backupmanager/local_desktop_to_backup_a
+
+  - type: remote
+    host: backup_a.example.com
+    user: root
+    # Optional overriding SSH port
+    port: 22000
+    path: /var/run/backupmanager/local_desktop_to_backup_a
+"""
+
+CONFIG_LOCK_TMPL = """
+
 """
 
 CONFIG_BLOCKS_ON_TMPL="""
@@ -96,19 +105,19 @@ CONFIG_SYNCS_TMPL="""
 class IntegrationTestUtils(object):
 
     @staticmethod
-    def build_test_configs(test_configs, app_configs, jobs_config=None ):
+    def build_test_configs(app_configs):
         retval = {}
-        retval["pid_file_dir"] = test_configs.pid_dir
-        retval["cron_schedule"] = app_configs.cron_schedule
-        # There is currently only one rsync implementatio.
-        retval["rsync_impl"] = "linux_native"
-        if jobs_config:
-            jobs = {}
-            for job in jobs_config:
-                j = {}
-                j["id"] = job.id
-                pass
-            retval["jobs"] = jobs
+        # retval["pid_file_dir"] = test_configs.pid_dir
+        # retval["cron_schedule"] = app_configs.cron_schedule
+        # # There is currently only one rsync implementatio.
+        # retval["rsync_impl"] = "linux_native"
+        # if jobs_config:
+        #     jobs = {}
+        #     for job in jobs_config:
+        #         j = {}
+        #         j["id"] = job.id
+        #         pass
+        #     retval["jobs"] = jobs
         return retval
 
     @staticmethod
