@@ -1,0 +1,4 @@
+github.com/akamensky/argparse v1.4.0 h1:YGzvsTqCvbEZhL8zZu2AiA5nq805NZh75JNj4ajn1xc=
+github.com/akamensky/argparse v1.4.0/go.mod h1:S5kwC7IuDcEr5VeXtGPRVZ5o/FdhcMlQz4IZQuw64xA=
+github.com/rchapin/rlog v1.0.0 h1:zt9R1PrQFIV6j5B3l2zKzMq8MTrIbf7gqk8nvMa808E=
+github.com/rchapin/rlog v1.0.0/go.mod h1:mQrGxRkmOYBjkjQXn7fEUslz/5bu+7OzQcON48/S6Ok=
