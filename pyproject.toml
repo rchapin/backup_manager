@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools >= 69.0.3", "wheel >= 0.42.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+# optional-dependencies = {dev = { file = ["requirements-dev.txt"] }}
+
+[tool.black]
+line-length = 100
