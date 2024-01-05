@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
-	log "github.com/rchapin/rlog"
 	"github.com/rchapin/backup_manager/run"
 )
 
@@ -14,7 +14,10 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	err := run.Run(os.Args, ctx, cancel)
 	if err != nil {
-		log.Error(err)
+		slog.Error(
+			"executing run.Run",
+			slog.String("err", err.Error()),
+		)
 		os.Exit(1)
 	}
 }

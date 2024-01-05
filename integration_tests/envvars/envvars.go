@@ -6,11 +6,11 @@ import (
 )
 
 type EnvVarCfg struct {
-	VarName string
+	VarName       string
 	IsCredentials bool
-	IsSensitive bool
-	ErrMsg string
-	DefaultVal string
+	IsSensitive   bool
+	ErrMsg        string
+	DefaultVal    string
 }
 
 type EnvVars struct {
