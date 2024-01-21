@@ -14,5 +14,5 @@ logging.basicConfig(
 
 
 class UtilsTest(unittest.TestCase):
-    def test_something(self):
+    def test_something_utils(self):
         pass
