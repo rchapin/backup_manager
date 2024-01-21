@@ -7,3 +7,4 @@
 *build/
 .coverage
 pytest.ini
+.env
