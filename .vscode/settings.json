@@ -1,0 +1,14 @@
+{
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": [
+    "backupmanager"
+  ],
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "./backupmanager",
+    "-p",
+    "test_*.py"
+  ],
+}

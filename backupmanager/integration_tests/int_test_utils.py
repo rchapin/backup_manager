@@ -200,7 +200,8 @@ class IntegrationTestUtils(object):
 
     @staticmethod
     def restart_docker_containter(configs):
-        pass
+        IntegrationTestUtils.stop_docker_container(configs)
+        IntegrationTestUtils.start_docker_container(configs)
 
     @staticmethod
     def start_docker_container(configs):

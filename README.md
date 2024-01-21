@@ -19,3 +19,17 @@ In order to setup Eclipse to run the integration tests and step through the code
 
 1. Run Eclipse from the same terminal that you run the following.
 ```./run-tests-sh --export-env-vars-only```
+
+## Dependency Management
+
+First-order dependencies for `requirements.txt`, `requirements_test.txt`, and `requirements_dev.txt` are defined in the respective `.in` files.  If you make updates to the first order dependencies you need to "compile" the full dependency list.  First, ensure that `pip-tools` is installed in your dev virtual environment.
+```
+pip install .[dev]
+```
+
+Then run the following
+```
+pip-compile -v --no-emit-trusted-host --no-emit-index-url requirements.in
+pip-compile -v --no-emit-trusted-host --no-emit-index-url requirements_test.in
+pip-compile -v --no-emit-trusted-host --no-emit-index-url requirements_dev.in
+```

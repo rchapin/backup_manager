@@ -21,7 +21,7 @@ class ITBackupManager(ITBase):
     def setUp(self):
         logger.info('Running setup')
         self.setup_base()
-        IntegrationTestUtils.start_docker_container(self.test_configs)
+        IntegrationTestUtils.restart_docker_containter(self.test_configs)
         print('foo')
 
     def tearDown(self):
@@ -52,7 +52,7 @@ class ITBackupManager(ITBase):
         backupmanager.run()
 
 
-    @unittest.skip('skip')
+    # @unittest.skip('skip')
     def test_something(self):
         logger.info('test_something')
         '''

@@ -9,7 +9,7 @@
 ################################################################################
 # CONFIGS
 
-PYTHON=python3.9
+PYTHON=python3.11
 
 ################################################################################
 #
@@ -45,6 +45,8 @@ function export_env_vars {
   # ------------------------------------------------------------------------------
   # Sane defaults.  Can be overriden by first specifying the variable you want to
   # change as an environmental variable in the calling shell.
+
+  export BACKUPMGRINTTEST_PYTHON=${BACKUPMGRINTTEST_PYTHON:-$(which python3.11)}
 
   export BACKUPMGRINTTEST_TEST_HOST=${BACKUPMGRINTTEST_TEST_HOST:-localhost}
 
@@ -166,7 +168,7 @@ function configure_firewall {
   case $distro in
 
     debian)
-      if dpkg --get-selections | grep ufw 2>&1 > /dev/null     
+      if dpkg --get-selections | grep ufw 2>&1 > /dev/null
       then
         # Check to see if it is active
         if ! ssh root@localhost ufw status | grep inactive > /dev/null
@@ -193,10 +195,28 @@ function configure_firewall {
 #   DESCRIPTION:  Create the virtual environment and install the application.
 #-------------------------------------------------------------------------------
 function create_virtenv {
-  $(which $PYTHON) -mvenv $BACKUPMGRINTTEST_VIRTENV_DIR
+  $BACKUPMGRINTTEST_PYTHON -mvenv $BACKUPMGRINTTEST_VIRTENV_DIR
   source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
   pip install -U setuptools pip coverage
-  pip install .
+  # pip install .
+  pip install .[test]
+}
+
+#---  FUNCTION  ----------------------------------------------------------------
+#          NAME:  create_pytest_ini
+#   DESCRIPTION:  Create the pytest.ini file required for running tests via VSCode
+#-------------------------------------------------------------------------------
+function create_pytest_ini {
+  OUTFILE=pytest.ini
+  cat << EOF > $OUTFILE
+[pytest]
+log_cli = 1
+log_cli_level = INFO
+log_cli_format = %(asctime)s,%(levelname)s,%(module)s:%(lineno)s,%(message)s
+log_cli_date_format=%Y-%m-%d %H:%M:%S
+env =
+EOF
+  env | grep BACKUPMGRINTTEST_ | sort | sed 's/^/    /' >> $OUTFILE
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
@@ -214,14 +234,15 @@ function setup {
     "$BACKUPMGRINTTEST_PARENT_DIR"
     "$BACKUPMGRINTTEST_CONFIG_DIR"
     "$BACKUPMGRINTTEST_DOCKER_DIR"
-  ) 
+  )
   for dir in "${dirs[@]}"
   do
     mkdir -p $dir
   done
 
-  install_dependencies 
+  install_dependencies
   configure_firewall
+  create_pytest_ini
   build_docker_test_image
   start_docker_container
   create_virtenv
@@ -247,7 +268,7 @@ function teardown {
   docker rmi $BACKUPMGRINTTEST_IMAGE_NAME 2> /dev/null
   set -e
 
-  echo "Test environment clean-up complete" 
+  echo "Test environment clean-up complete"
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
@@ -264,7 +285,7 @@ function run_tests {
   # Run the unit tests
   echo "======================================================================="
   echo "Running the unit tests"
-  coverage run -m unittest discover -s backupmanager/tests # add -k $test_name 
+  coverage run -m unittest discover -s backupmanager/tests # add -k $test_name
 
   if [ "$OMIT_INTEGRATION_TESTS" -ne 1 ]
   then

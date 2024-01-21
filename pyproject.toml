@@ -3,11 +3,27 @@ requires = ["setuptools >= 69.0.3", "wheel >= 0.42.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-dynamic = ["dependencies"]
+name = "backup_manager"
+dynamic = ["readme", "dependencies", "optional-dependencies"]
+version = "0.0.1"
+authors = [{ name = "Ryan Chapin", email = "rchapin@nbinteractive.com" }]
+description = "A tool to manage rsyncing of data between multiple machines"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: POSIX",
+]
+
+[project.scripts]
+backupmanager = "backupmanager.main:main"
 
 [tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
-# optional-dependencies = {dev = { file = ["requirements-dev.txt"] }}
+readme = { file = ["README.md"] }
+dependencies = { file = ["requirements.txt"] }
+optional-dependencies.test = { file = ["requirements_test.txt"] }
+optional-dependencies.dev = { file = ["requirements_dev.txt"] }
 
 [tool.black]
 line-length = 100

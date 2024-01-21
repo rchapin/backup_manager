@@ -48,7 +48,7 @@ class BackupManager(object):
         env_vars = Utils.get_env_vars(ENV_VAR_PREFIX)
         runonce_env_var_key = f"{ENV_VAR_PREFIX}_RUNONCE"
         if runonce_env_var_key in env_vars:
-            self.runonce = True if env_vars[runonce_env_var_key] is "1" else False
+            self.runonce = True if env_vars[runonce_env_var_key] == "1" else False
         else:
             self.runonce = False
 
