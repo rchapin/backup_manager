@@ -7,9 +7,6 @@
 # author:   Ryan Chapin
 #
 ################################################################################
-# CONFIGS
-
-PYTHON=python3.11
 
 ################################################################################
 #
@@ -195,28 +192,42 @@ function configure_firewall {
 #   DESCRIPTION:  Create the virtual environment and install the application.
 #-------------------------------------------------------------------------------
 function create_virtenv {
-  $BACKUPMGRINTTEST_PYTHON -mvenv $BACKUPMGRINTTEST_VIRTENV_DIR
-  source $BACKUPMGRINTTEST_VIRTENV_DIR/bin/activate
-  pip install -U setuptools pip coverage
-  # pip install .
+  local env_type=$1
+  local virt_env_dir=$BACKUPMGRINTTEST_VIRTENV_DIR
+
+  if [ "$env_type" == "dev" ];
+  then
+    virt_env_dir=~/.virtualenvs/backup_manager
+  fi
+
+  $BACKUPMGRINTTEST_PYTHON -mvenv $virt_env_dir
+  source $virt_env_dir/bin/activate
+  pip install -U setuptools pip
+  pip install .
   pip install .[test]
+
+  if [ "$env_type" == "dev" ];
+  then
+    pip install .[dev]
+  fi
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
-#          NAME:  create_pytest_ini
+#          NAME:  create_test_env_file
 #   DESCRIPTION:  Create the pytest.ini file required for running tests via VSCode
 #-------------------------------------------------------------------------------
-function create_pytest_ini {
-  OUTFILE=pytest.ini
-  cat << EOF > $OUTFILE
-[pytest]
-log_cli = 1
-log_cli_level = INFO
-log_cli_format = %(asctime)s,%(levelname)s,%(module)s:%(lineno)s,%(message)s
-log_cli_date_format=%Y-%m-%d %H:%M:%S
-env =
-EOF
-  env | grep BACKUPMGRINTTEST_ | sort | sed 's/^/    /' >> $OUTFILE
+function create_test_env_file {
+  OUTFILE=.env
+  env | grep BACKUPMGRINTTEST_ | sort >> $OUTFILE
+}
+
+#---  FUNCTION  ----------------------------------------------------------------
+#          NAME:  dev_setup
+#   DESCRIPTION:  Cleans and creates the required test dirs based on the env
+#                 vars already defined and creates a developer virtual env.
+#-------------------------------------------------------------------------------
+function dev_setup {
+  setup "dev"
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
@@ -225,6 +236,8 @@ EOF
 #                 vars already defined.
 #-------------------------------------------------------------------------------
 function setup {
+  local env_type=$1
+
   # First run teardown to remove anything left behind
   teardown
 
@@ -242,10 +255,10 @@ function setup {
 
   install_dependencies
   configure_firewall
-  create_pytest_ini
+  create_test_env_file
   build_docker_test_image
   start_docker_container
-  create_virtenv
+  create_virtenv $env_type
   echo "Test environment setup complete"
 }
 
@@ -319,7 +332,9 @@ Options:
      script.
 
   -t TEARDOWN
-     Teardown the test environment on the configured test host
+     Teardown the test environment on the configured test host.
+
+  --dev-setup Only run the setup for a dev environment without running the tests.
 
   --setup-only Only run the setup without running the tests.
 
@@ -350,11 +365,12 @@ LEAVE=0
 TEARDOWN=0
 TEARDOWN_ONLY=0
 SETUP_ONLY=0
+DEV_SETUP=0
 EXPORT_ENV_VARS_ONLY=0
 OVERRIDE_ENV_VARS_PATH=0
 OMIT_INTEGRATION_TESTS=0
 
-PARSED_OPTIONS=`getopt -o hltie: -l export-env-vars-only,setup-only,teardown-only -- "$@"`
+PARSED_OPTIONS=`getopt -o hltie: -l export-env-vars-only,dev-setup,setup-only,teardown-only -- "$@"`
 
 # Check to see if the getopts command failed
 if [ $? -ne 0 ];
@@ -393,9 +409,13 @@ while true; do
          shift
          ;;
 
-
       --export-env-vars-only)
          EXPORT_ENV_VARS_ONLY=1
+         shift
+         ;;
+
+      --dev-setup)
+         DEV_SETUP=1
          shift
          ;;
 
@@ -456,9 +476,15 @@ else
     exit
   fi
 
+  if [ "$DEV_SETUP" -eq 1 ]
+  then
+    setup "dev"
+    exit
+  fi
+
   if [ "$SETUP_ONLY" -eq 1 ]
   then
-    setup
+    setup "test"
     exit
   fi
 

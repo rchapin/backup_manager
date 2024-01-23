@@ -22,7 +22,6 @@ class ITBackupManager(ITBase):
         logger.info('Running setup')
         self.setup_base()
         IntegrationTestUtils.restart_docker_containter(self.test_configs)
-        print('foo')
 
     def tearDown(self):
         self.tear_down()
