@@ -35,6 +35,13 @@ def parse_args():
 
     parser.add_argument("--dryrun", action="store_true", help="Run in dryrun mode")
 
+    parser.add_argument(
+        "--runonce",
+        type=bool,
+        default=False
+        help="Run a single execution and exit",
+    )
+
     # Build a standard dict of the CLI args
     args = parser.parse_args()
     return dict(

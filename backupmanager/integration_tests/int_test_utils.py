@@ -1,6 +1,9 @@
 from collections import namedtuple
+from dataclasses import dataclass
+from dataclass_wizard import YAMLWizard
 from fabric import Connection
 from invoke import run
+from typing import List
 import logging
 import os
 import random
@@ -19,13 +22,60 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-AppConfigs = namedtuple("AppConfigs", ["cron_schedule", "jobs"])
-Job = namedtuple("Job", ["id", "user", "host", "port", "lock_files", "blocks_on", "syncs"])
-LockLocal = namedtuple("Lock", ["type", "path"])
-LockRemote = namedtuple("LockRemote", ["type", "host", "user", "port", "path"])
-BlocksOnLocal = namedtuple("BlocksOnLocal", ["type", "lock_file_path"])
-BlocksOnRemote = namedtuple("BlocksOnRemote", ["type", "host", "user", "port", "lock_file_path"])
-Sync = namedtuple("Sync", ["source", "dest", "opts"])
+@dataclass
+class RemoteHost:
+    user: str
+    host: str
+    port: str
+
+@dataclass
+class AppConfigs(YAMLWizard):
+    cron_schedule: str
+    rsync_impl: str
+    pid_file_path: str
+
+@dataclass
+class Job(YAMLWizard, RemoteHost):
+    id: str
+
+@dataclass
+class LockFiles(YAMLWizard):
+    type: str
+    path: str
+
+@dataclass
+class RemoteLockFiles(LockFiles, RemoteHost):
+    pass
+
+@dataclass
+class BlocksOn(YAMLWizard):
+    type: str
+    lock_file_path: str
+
+@dataclass
+class BlocksOnRemote(BlocksOn, RemoteHost):
+    pass
+
+@dataclass
+class Sync(YAMLWizard):
+    source: str
+    dest: str
+    opts: List[str]
+
+@dataclass
+class Job(YAMLWizard, RemoteHost):
+    id: str
+    lock_files: List[LockFiles]
+    blocks_on: List[BlocksOn]
+    syncs: List[Sync]
+
+# AppConfigs = namedtuple("AppConfigs", ["cron_schedule", "rsync_impl", "pid_file_dir", "jobs"])
+# Job = namedtuple("Job", ["id", "user", "host", "port", "lock_files", "blocks_on", "syncs"])
+# LockLocal = namedtuple("Lock", ["type", "path"])
+# LockRemote = namedtuple("LockRemote", ["type", "host", "user", "port", "path"])
+# BlocksOnLocal = namedtuple("BlocksOnLocal", ["type", "lock_file_path"])
+# BlocksOnRemote = namedtuple("BlocksOnRemote", ["type", "host", "user", "port", "lock_file_path"])
+# Sync = namedtuple("Sync", ["source", "dest", "opts"])
 
 TEST_CONF_NAMED_TUPLE = "TestConfigs"
 ENV_VAR_PREFIX = "BACKUPMGRINTTEST"
@@ -105,7 +155,7 @@ CONFIG_SYNCS_TMPL="""
 class IntegrationTestUtils(object):
 
     @staticmethod
-    def build_test_configs(app_configs):
+    def build_test_configs(app_configs: AppConfigs, jobs):
         retval = {}
         # retval["pid_file_dir"] = test_configs.pid_dir
         # retval["cron_schedule"] = app_configs.cron_schedule

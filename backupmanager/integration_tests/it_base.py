@@ -45,6 +45,7 @@ class ITBase(unittest.TestCase):
             configfile=config_path,
             dryrun=dryrun,
             loglevel=loglevel,
+            runonce=True,
         )
 
     def setup_base(self):

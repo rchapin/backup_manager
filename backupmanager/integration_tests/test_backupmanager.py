@@ -36,19 +36,19 @@ class ITBackupManager(ITBase):
             # Include a trailing carriage return
             fh.write(other_pid)
 
-        lock_files = [LockLocal(type="local", path=os.path.join(self.test_configs.lock_dir, "sync.lock"))]
-        syncs = [Sync(source="/var/tmp/somedir", dest="/var/tmp/some_other_dir", opts=None)]
-        jobs = [Job(id="job-id-1", user="root", host="other_host", port=None, lock_files=lock_files, blocks_on=None, syncs=syncs)]
-        app_configs = AppConfigs(cron_schedule="30 * * * *", jobs=jobs)
-        IntegrationTestUtils.build_test_configs(app_configs)
+        # lock_files = [LockLocal(type="local", path=os.path.join(self.test_configs.lock_dir, "sync.lock"))]
+        # syncs = [Sync(source="/var/tmp/somedir", dest="/var/tmp/some_other_dir", opts=None)]
+        # jobs = [Job(id="job-id-1", user="root", host="other_host", port=None, lock_files=lock_files, blocks_on=None, syncs=syncs)]
+        # app_configs = AppConfigs(cron_schedule="30 * * * *", jobs=jobs)
+        # IntegrationTestUtils.build_test_configs(app_configs)
 
-        jobs = []
-        jobs.append()
-        configs = self.build_config()
-        IntegrationTestUtils.write_configs(self.test_configs, configs)
-        args = self.get_default_args()
-        backupmanager = BackupManager(args)
-        backupmanager.run()
+        # jobs = []
+        # jobs.append()
+        # configs = self.build_config()
+        # IntegrationTestUtils.write_configs(self.test_configs, configs)
+        # args = self.get_default_args()
+        # backupmanager = BackupManager(args)
+        # backupmanager.run()
 
 
     # @unittest.skip('skip')
