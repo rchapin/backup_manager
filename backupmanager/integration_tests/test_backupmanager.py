@@ -4,7 +4,7 @@ import os
 import sys
 from fabric import Connection
 from backupmanager.integration_tests.it_base import ITBase
-from backupmanager.integration_tests.int_test_utils import IntegrationTestUtils, AppConfigs, Job, LockLocal, LockRemote, BlocksOnLocal, BlocksOnRemote, Sync
+from backupmanager.integration_tests.int_test_utils import IntegrationTestUtils, AppConfigs, Job, LockFile, RemoteLockFile, BlocksOn, BlocksOnRemote, Sync
 from backupmanager.integration_tests.int_test_utils import AppConfigs
 from backupmanager.lib.backupmanager import BackupManager
 from backupmanager.lib.backupmanager import PID_FILE_NAME
@@ -69,35 +69,67 @@ class ITBackupManager(ITBase):
         f2_expected_path = os.path.join('/data/d1/d2', 'f2.txt')
         expected_files.append(dict(expected_path=f2_expected_path, expected_size=f2_size))
 
+
         jobs = []
-        job = {}
-        job['id'] = 'local_to_container'
-        job['user'] = 'root'
-        job['host'] = self.test_configs.test_host
-        job['port'] = self.test_configs.container_port
 
-        # Create lock file on the localhost
-        lock_files = []
-        lock_files.append(dict(
-            type='local',
-            path=os.path.join(self.test_configs.lock_dir, 'lock_file'),
-            ))
-        job['lock_files'] = lock_files
-
-        syncs = []
-        syncs.append(dict(
-            source=d1,
-            dest='/data',
-            opts=['-av', '--delete'],
-            ))
-        job['syncs'] = syncs
-        jobs.append(job)
-
-        configs = IntegrationTestUtils.build_base_config(self.test_configs)
-        configs['jobs'] = jobs
-        configs['cron_schedule'] = '* * * * *'
-
+        app_configs = AppConfigs(
+            cron_schedule="* * * * *",
+            pid_file_dir=self.test_configs.pid_dir,
+            jobs=[
+                Job(
+                    id="local_to_container",
+                    user="root",
+                    host=self.test_configs.test_host,
+                    port=self.test_configs.container_port,
+                    lock_files=[
+                        LockFile(
+                            type="local",
+                            path=os.path.join(self.test_configs.lock_dir, 'lock_file'),
+                            ),
+                    ],
+                    syncs=[
+                        Sync(
+                            source=d1,
+                            dest="/data",
+                            opts=['-av', '--delete'],
+                        ),
+                    ],
+                    blocks_on=None,
+                )
+            ]
+        )
         config_path = os.path.join(self.test_configs.config_dir, self.test_configs.config_file)
-        IntegrationTestUtils.write_yaml_file(config_path, configs)
+        app_configs.to_yaml_file(config_path)
+
+        # IntegrationTestUtils.write_yaml_file(config_path, configs)
+        # job = {}
+        # job['id'] = 'local_to_container'
+        # job['user'] = 'root'
+        # job['host'] = self.test_configs.test_host
+        # job['port'] = self.test_configs.container_port
+
+        # # Create lock file on the localhost
+        # lock_files = []
+        # lock_files.append(dict(
+        #     type='local',
+        #     path=os.path.join(self.test_configs.lock_dir, 'lock_file'),
+        #     ))
+        # job['lock_files'] = lock_files
+
+        # syncs = []
+        # syncs.append(dict(
+        #     source=d1,
+        #     dest='/data',
+        #     opts=['-av', '--delete'],
+        #     ))
+        # job['syncs'] = syncs
+        # jobs.append(job)
+
+        # configs = IntegrationTestUtils.build_base_config(self.test_configs)
+        # configs['jobs'] = jobs
+        # configs['cron_schedule'] = '* * * * *'
+
+        # config_path = os.path.join(self.test_configs.config_dir, self.test_configs.config_file)
+        # IntegrationTestUtils.write_yaml_file(config_path, configs)
 
         self.run_backup_manager(config_path, expected_files)

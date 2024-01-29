@@ -37,7 +37,6 @@ class BackupManager(object):
             logger.info("Shutting down")
             return
 
-        self.rsync_impl = self.configs["rsync_impl"]
         self.scheduler = BackgroundScheduler()
         self.scheduler.add_listener(self.event_listener)
         self.running = False

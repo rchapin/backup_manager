@@ -29,22 +29,12 @@ class RemoteHost:
     port: str
 
 @dataclass
-class AppConfigs(YAMLWizard):
-    cron_schedule: str
-    rsync_impl: str
-    pid_file_path: str
-
-@dataclass
-class Job(YAMLWizard, RemoteHost):
-    id: str
-
-@dataclass
-class LockFiles(YAMLWizard):
+class LockFile(YAMLWizard):
     type: str
     path: str
 
 @dataclass
-class RemoteLockFiles(LockFiles, RemoteHost):
+class RemoteLockFile(LockFile, RemoteHost):
     pass
 
 @dataclass
@@ -65,9 +55,15 @@ class Sync(YAMLWizard):
 @dataclass
 class Job(YAMLWizard, RemoteHost):
     id: str
-    lock_files: List[LockFiles]
+    lock_files: List[LockFile]
     blocks_on: List[BlocksOn]
     syncs: List[Sync]
+
+@dataclass
+class AppConfigs(YAMLWizard):
+    cron_schedule: str
+    pid_file_dir: str
+    jobs: List[Job]
 
 # AppConfigs = namedtuple("AppConfigs", ["cron_schedule", "rsync_impl", "pid_file_dir", "jobs"])
 # Job = namedtuple("Job", ["id", "user", "host", "port", "lock_files", "blocks_on", "syncs"])
